@@ -26,8 +26,8 @@ jobs:
       - name: بررسی ساختار فایلهای وب
         run: node tools/check.js
 
-      # The build log is mirrored into a check-run annotation so it can be read
-      # through api.github.com (useful in restricted/offline environments).
+      # The build log is mirrored into the job summary so it can be read via
+      # api.github.com (helpful in restricted / offline environments).
       - name: ساخت APK نسخه Debug
         working-directory: android
         shell: bash
@@ -36,7 +36,12 @@ jobs:
           gradle :app:assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-build.log
           rc=${PIPESTATUS[0]}
           if [ "$rc" -ne 0 ]; then
-            python3 -c "s=open('/tmp/gradle-build.log',errors='replace').read().splitlines()[-180:]; m='%0A'.join(x.replace('%','%25').replace('\r','%0D') for x in s); print('::error title=gradle failed::'+m)"
+            {
+              echo "### خروجی Gradle (exit $rc)"
+              echo '```text'
+              tail -n 200 /tmp/gradle-build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$rc"
 
