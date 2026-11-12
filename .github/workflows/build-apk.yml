@@ -32,6 +32,8 @@ jobs:
         working-directory: android
         shell: bash
         run: |
+          # GitHub runs bash with -e by default; disable it so we can capture the log.
+          set +e
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-build.log
           rc=${PIPESTATUS[0]}
