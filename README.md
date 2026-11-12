@@ -42,6 +42,8 @@ gradle :app:assembleDebug
 # خروجی: android/app/build/outputs/apk/debug/*.apk
 ```
 
+**APK آمادهٔ نصب:** فایل `HooshyarPOS-debug.apk` در ریشه مخزن قرار دارد (نسخه Debug، امضاشده با کلید دیباگ). همچنین workflow موجود در `.github/workflows/build-apk.yml` با هر push بهطور خودکار APK میسازد، آن را بهعنوان Artifact بارگذاری میکند و همان فایل را در ریشه مخزن بهروزرسانی مینماید. برای نصب روی دستگاه: `adb install -r HooshyarPOS-debug.apk` یا انتقال فایل و نصب مستقیم (بخش «نصب از منابع ناشناخته» را فعال کنید). برای انتشار رسمی، APK را با کلید release خود امضا کنید.
+
 نکات:
 
 - فایلهای رابط کاربری **تک منبع** هستند: پوشه `webapp/` در ریشه مخزن. تسک `syncWebAssets` هنگام build آنها را به `assets/www/` کپی میکند؛ بنابراین تغییر در `webapp/` هم در پیشنمایش وب و هم در APK اعمال میشود.
