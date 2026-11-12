@@ -53,7 +53,7 @@ jobs:
         run: |
           git config user.email "ci@users.noreply.github.com"
           git config user.name "CI Bot"
-          git add ci-gradle.log
+          git add -f ci-gradle.log
           git commit -m "ci: لاگ ساخت Gradle" || echo "nothing to commit"
           git push origin "HEAD:${GITHUB_REF_NAME}" || echo "log push skipped"
 
