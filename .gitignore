@@ -1,0 +1,23 @@
+# Node / preview
+node_modules/
+npm-debug.log*
+.DS_Store
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+*.apk
+*.aab
+*.keystore
+!android/app/src/main/assets/**
+
+# Generated web assets inside the Android build
+android/app/src/main/assets/www/
+
+# Local backups / exports
+backups/
+*.log

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Common ESC/POS printer USB vendor IDs (XPrinter, Epson, STAR, generic STM). -->
+<resources>
+    <usb-device vendor-id="1046" />  <!-- 0x0416 XPrinter -->
+    <usb-device vendor-id="1155" />  <!-- 0x0483 STMicroelectronics -->
+    <usb-device vendor-id="4070" />  <!-- 0x0FE6 -->
+    <usb-device vendor-id="1208" />  <!-- 0x04B8 Epson -->
+    <usb-device vendor-id="1305" />  <!-- 0x0519 STAR -->
+</resources>

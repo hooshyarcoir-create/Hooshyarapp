@@ -1,0 +1,14 @@
+{
+  "name": "hooshyar-pos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "سامانه سفارشگیری و صدور فاکتور رستوران هوشیار - پیشنمایش تحت وب و میزبان اندروید",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node tools/check.js",
+    "test": "node tools/check.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
