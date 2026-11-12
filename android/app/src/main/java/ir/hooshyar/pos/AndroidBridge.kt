@@ -102,8 +102,8 @@ class AndroidBridge(private val activity: MainActivity) {
                         return TransportResult(false, "مجوز دسترسی به چاپگر USB تایید نشد.").json()
                     PrinterTransport.printUsb(manager, device, bytes)
                 }
-                "system" -> TransportResult(false, "برای چاپگر سیستم از گزینه چاپ مرورگر / PDF استفاده کنید.").json()
-                else -> TransportResult(false, "نوع اتصال چاپگر ناشناخته است.").json()
+                "system" -> TransportResult(false, "برای چاپگر سیستم از گزینه چاپ مرورگر / PDF استفاده کنید.")
+                else -> TransportResult(false, "نوع اتصال چاپگر ناشناخته است.")
             }.json()
         } catch (e: Exception) {
             Log.e(TAG, "print failed", e)
