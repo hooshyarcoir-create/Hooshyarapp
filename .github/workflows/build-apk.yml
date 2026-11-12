@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: دریافت سورس
         uses: actions/checkout@v4
@@ -26,8 +28,6 @@ jobs:
       - name: بررسی ساختار فایلهای وب
         run: node tools/check.js
 
-      # The build log is mirrored into the job summary so it can be read via
-      # api.github.com (helpful in restricted / offline environments).
       - name: ساخت APK نسخه Debug
         working-directory: android
         shell: bash
@@ -45,7 +45,17 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+          cp /tmp/gradle-build.log "$GITHUB_WORKSPACE/ci-gradle.log" || true
           exit "$rc"
+
+      - name: ذخیره لاگ ساخت
+        if: failure()
+        run: |
+          git config user.email "ci@users.noreply.github.com"
+          git config user.name "CI Bot"
+          git add ci-gradle.log
+          git commit -m "ci: لاگ ساخت Gradle" || echo "nothing to commit"
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "log push skipped"
 
       - name: بارگذاری APK
         uses: actions/upload-artifact@v4
