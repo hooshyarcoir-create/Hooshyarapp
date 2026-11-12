@@ -3,6 +3,11 @@ name: ساخت APK اندروید
 on:
   push:
     branches: ['**']
+    # The build result is committed back to the branch; ignore it so the
+    # workflow does not trigger itself in a loop.
+    paths-ignore:
+      - 'HooshyarPOS-debug.apk'
+      - 'ci-gradle.log'
   workflow_dispatch:
 
 jobs:
@@ -32,7 +37,7 @@ jobs:
         working-directory: android
         shell: bash
         run: |
-          # GitHub runs bash with -e by default; disable it so we can capture the log.
+          # GitHub runs bash with -e; disable it to capture the log on failure.
           set +e
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-build.log
@@ -45,21 +50,24 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-          cp /tmp/gradle-build.log "$GITHUB_WORKSPACE/ci-gradle.log" || true
           exit "$rc"
 
-      - name: ذخیره لاگ ساخت
-        if: failure()
-        run: |
-          git config user.email "ci@users.noreply.github.com"
-          git config user.name "CI Bot"
-          git add -f ci-gradle.log
-          git commit -m "ci: لاگ ساخت Gradle" || echo "nothing to commit"
-          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "log push skipped"
-
-      - name: بارگذاری APK
+      - name: بارگذاری APK بهعنوان Artifact
         uses: actions/upload-artifact@v4
         with:
           name: HooshyarPOS-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Also keep the installable APK in the repository so it can be fetched
+      # from github.com directly (no artifact CDN required).
+      - name: قرار دادن APK در مخزن
+        if: success()
+        run: |
+          cp android/app/build/outputs/apk/debug/*.apk HooshyarPOS-debug.apk
+          git config user.email "ci@users.noreply.github.com"
+          git config user.name "CI Bot"
+          git add HooshyarPOS-debug.apk
+          git diff --cached --quiet && exit 0
+          git commit -m "build: APK نسخه Debug [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

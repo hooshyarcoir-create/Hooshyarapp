@@ -11,6 +11,7 @@ android/local.properties
 android/.idea/
 *.iml
 *.apk
+!HooshyarPOS-debug.apk
 *.aab
 *.keystore
 !android/app/src/main/assets/**
