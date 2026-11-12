@@ -26,9 +26,19 @@ jobs:
       - name: بررسی ساختار فایلهای وب
         run: node tools/check.js
 
+      # The build log is mirrored into a check-run annotation so it can be read
+      # through api.github.com (useful in restricted/offline environments).
       - name: ساخت APK نسخه Debug
         working-directory: android
-        run: gradle :app:assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            python3 -c "s=open('/tmp/gradle-build.log',errors='replace').read().splitlines()[-180:]; m='%0A'.join(x.replace('%','%25').replace('\r','%0D') for x in s); print('::error title=gradle failed::'+m)"
+          fi
+          exit "$rc"
 
       - name: بارگذاری APK
         uses: actions/upload-artifact@v4
