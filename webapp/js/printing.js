@@ -145,6 +145,7 @@ App.print = (function () {
       inv.payments.forEach(p => {
         const label = p.label || ({cash:'نقدی',credit:'اعتباری',card:'کارتخوان',other:'سایر'}[p.method]||p.method);
         h += line(esc(label) + (p.ref ? ' <span class="p-small">( '+esc(p.ref)+' )</span>' : ''), N(p.amount));
+        if(p.cashRegisterName)h+='<div class="p-note">صندوق دریافت نقدی: '+esc(p.cashRegisterName)+'</div>';
       });
     }
     h += '<div class="p-sep"></div><div class="p-center p-small">'+esc(s.footer)+'</div>';
@@ -194,7 +195,7 @@ App.print = (function () {
     rows.push(SPACE(6), T('مبلغ قابل پرداخت: '+N(inv.total)+' '+s.currency,{align:'center',style:'bold'}));
     if (inv.payments && inv.payments.length) {
       rows.push(RULE());
-      inv.payments.forEach(p => rows.push(P((p.label||p.method)+(p.ref?' ('+p.ref+')':''), N(p.amount), {style:'small'})));
+      inv.payments.forEach(p => {rows.push(P((p.label||p.method)+(p.ref?' ('+p.ref+')':''), N(p.amount), {style:'small'}));if(p.cashRegisterName)rows.push(T('صندوق دریافت نقدی: '+p.cashRegisterName,{style:'small'}));});
     }
     rows.push(RULE(), T(s.footer,{align:'center',style:'small'}), SPACE(14));
     return rows;

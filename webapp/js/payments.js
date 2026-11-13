@@ -15,6 +15,12 @@ App.pay = (function () {
     { id:'other',  label:'سایر',      icon:'tag',    desc:'کوپن، انتقال، کیف پول' }
   ];
   const methodLabel = m => (METHODS.find(x => x.id===m) || { label:m || '—' }).label;
+  function parseDiscountInput(raw) {
+    const digits=String(raw==null?'':raw).trim().replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c)));
+    const percent=/[%٪]/.test(digits), normalized=digits.replace(/[%٪]/g,'').replace(/[٬,\s]/g,'').replace(/٫/g,'.'), value=Number(normalized);
+    if(!normalized||!Number.isFinite(value)||value<0)return {ok:false,error:'مبلغ یا درصد تخفیف معتبر نیست'};
+    return {ok:true,patch:{type:percent?'percent':'amount',value:percent?value:Math.round(value)}};
+  }
   function remainingItems(order) {
     const paidByLine={};
     (order.payments||[]).filter(p=>!p.reversed&&p.status!=='failed').forEach(p=>(p.itemAllocations||[]).forEach(x=>{paidByLine[x.lineId]=(paidByLine[x.lineId]||0)+(Number(x.qty)||0);}));
@@ -45,7 +51,7 @@ App.pay = (function () {
       label:p.label || methodLabel(p.method), ref:p.ref||'', trace:p.trace||'', pan:p.pan||'',
       pspId:p.pspId||'', pspName:p.pspName||'', terminalId:p.terminalId||'', merchantId:p.merchantId||'',
       status:p.status || 'success', customerId:p.customerId||'', customerName:p.customerName||'',
-      itemAllocations:U.clone(p.itemAllocations||[]), note:p.note||'', cashReceived:Number(p.cashReceived)||0, invoiceNo:o.no,
+      itemAllocations:U.clone(p.itemAllocations||[]), cashRegisterId:p.cashRegisterId||'',cashRegisterName:p.cashRegisterName||'',note:p.note||'',cashReceived:Number(p.cashReceived)||0,invoiceNo:o.no,
       at:Date.now(), by:a.id, byName:a.name, reversed:false
     };
     App.store.commit(() => {
@@ -126,6 +132,6 @@ App.pay = (function () {
     App.store.commit(d => { d.customers.push(c); }, 'club.manage', 'ثبت مشتری «'+c.firstName+' '+c.lastName+'»');
     return c;
   }
-  return { METHODS, methodLabel, remainingItems, itemBatch, addPayment, removePayment,
+  return { METHODS, methodLabel, parseDiscountInput, remainingItems, itemBatch, addPayment, removePayment,
            reversePayment, canSettle, settle, pspPay, enabledPsps, customers, addCustomer, normalize };
 })();

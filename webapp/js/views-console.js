@@ -16,7 +16,7 @@ App.inputs = App.inputs || {};
 
   function stInit() {
     const s=st();
-    s.cPay=Object.assign({method:'cash',pspId:'',customerId:'',amount:null,cashReceived:'',selectedItems:{},itemCustomerId:'',dongiStage:'items'},s.cPay||{});
+    s.cPay=Object.assign({method:'cash',pspId:'',customerId:'',amount:null,cashReceived:'',discountEntry:'',selectedItems:{},itemCustomerId:'',dongiStage:'items'},s.cPay||{});
     if (!s.cHallId) s.cHallId=(D().halls[0]||{}).id||null;
     if (s.cGroupId==null) s.cGroupId='all';
     if (s.cSearch==null) s.cSearch='';
@@ -62,6 +62,9 @@ App.inputs = App.inputs || {};
   function payDraft(o) {
     const p=stInit().cPay,d=D(),psps=App.pay.enabledPsps(),rem=App.model.remaining(o),dongi=p.method==='dongi';
     let h='<div class="card-head"><h3>پرداخت‌ها</h3><span class="spacer"></span><span class="badge accent num">مانده '+M(rem)+'</span></div>';
+    const actor=App.auth.actor(),user=d.users.find(x=>x.id===actor.id),assignedPsp=user&&d.psps.find(x=>x.id===user.pspId),assignedRegister=user&&d.cashRegisters.find(x=>x.id===user.cashRegisterId),fallbackPsp=App.pay.enabledPsps()[0],fallbackRegister=(d.cashRegisters||[]).find(x=>x.enabled!==false);
+    h+='<div class="full tiny muted">کارتخوان کاربر: '+U.esc(assignedPsp?assignedPsp.name:(fallbackPsp?fallbackPsp.name:'تخصیص‌نیافته'))+' · صندوق نقدی: '+U.esc(assignedRegister?assignedRegister.name:(fallbackRegister?fallbackRegister.name:'تخصیص‌نیافته'))+'</div>'+
+      '<div class="form-grid"><label class="field full"><span>تخفیف فاکتور (مبلغ یا درصد مثل 10%)</span><input type="text" data-input="c-pay-discount" value="'+U.esc(p.discountEntry||'')+'" placeholder="مثلاً 10% یا 50000"></label><div class="full tiny muted" data-pay-discount-preview>تخفیف فعلی: '+M(App.domain.discountEquivalent(o).amount)+' · '+N(App.domain.discountEquivalent(o).percent)+'٪</div><button class="btn btn-sm" data-action="c-apply-pay-discount">اعمال تخفیف</button></div>';
     const configured=(d.paymentMethods||[]).filter(x=>x.enabled!==false&&(x.kind!=='credit'||App.auth.can('payment.credit')));
     const methods=configured.map(x=>({id:x.kind==='split'?'dongi':x.kind,label:x.kind==='other'?'کارت به کارت':x.name,icon:x.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[x.kind]||'tag')}));
     const payMethods=methods.filter(x=>['cash','card','credit','other'].includes(x.id));
@@ -84,7 +87,7 @@ App.inputs = App.inputs || {};
           '<div class="full"><b>روش پرداخت</b><div class="method-grid">'+payMethods.map(m=>'<button class="method-btn" data-action="c-add-method" data-method="'+U.esc(m.id)+'">'+I(m.icon)+U.esc(m.label)+'</button>').join('')+'</div></div>';
       }
     }
-    if((o.payments||[]).length)h+='<div class="divider full"></div>'+(o.payments||[]).filter(pay=>!pay.reversed).map(pay=>'<div class="list-row full"><span class="lr-main"><span class="lr-title">'+U.esc(pay.label||pay.method)+(pay.status==='failed'?' <span class="badge danger">ناموفق</span>':'')+'</span><span class="lr-sub">'+U.time(pay.at)+' · '+U.esc(pay.byName||'')+(pay.ref?' · مرجع '+U.esc(pay.ref):'')+'</span></span><span class="num strong">'+M(pay.amount)+'</span>'+(App.auth.can('payment.refund')?'<button class="icon-btn plain danger" data-action="c-pay-del" data-id="'+pay.id+'">'+I('trash','sm')+'</button>':'')+'</div>').join('');
+    if((o.payments||[]).length)h+='<div class="divider full"></div>'+(o.payments||[]).filter(pay=>!pay.reversed).map(pay=>'<div class="list-row full"><span class="lr-main"><span class="lr-title">'+U.esc(pay.label||pay.method)+(pay.status==='failed'?' <span class="badge danger">ناموفق</span>':'')+'</span><span class="lr-sub">'+U.time(pay.at)+' · '+U.esc(pay.byName||'')+(pay.ref?' · مرجع '+U.esc(pay.ref):'')+(pay.cashRegisterName?' · '+U.esc(pay.cashRegisterName):'')+'</span></span><span class="num strong">'+M(pay.amount)+'</span>'+(App.auth.can('payment.refund')?'<button class="icon-btn plain danger" data-action="c-pay-del" data-id="'+pay.id+'">'+I('trash','sm')+'</button>':'')+'</div>').join('');
     return h;
   }
   function orderPanel(o) {
@@ -347,6 +350,7 @@ App.inputs = App.inputs || {};
     'c-dongi-inc': el => withOrder(o=>{const p=stInit().cPay;if(p.dongiStage!=='items')return;const item=dongiItems(o).find(x=>x.line.id===el.dataset.id);if(!item)return;p.selectedItems=p.selectedItems||{};const current=Number(p.selectedItems[el.dataset.id])||0;p.selectedItems[el.dataset.id]=Math.min(item.remaining,current+Math.min(1,item.remaining-current));refresh();}),
     'c-dongi-dec': el => withOrder(o=>{const p=stInit().cPay;if(p.dongiStage!=='items')return;p.selectedItems=p.selectedItems||{};p.selectedItems[el.dataset.id]=Math.max(0,(Number(p.selectedItems[el.dataset.id])||0)-1);refresh();}),
     'c-add-method': el => withOrder(o=>addPaymentByMethod(o,el.dataset.method)),
+    'c-apply-pay-discount': () => withOrder(o=>applyPaymentDiscount(o)),
     'c-confirm-payment': () => withOrder(o => {
       if(!App.auth.can('payment.settle')&&!App.auth.can('order.settlePrint')) return App.ui.toast('دسترسی تسویه ندارید.','err');
       const p=stInit().cPay;
@@ -456,6 +460,17 @@ App.inputs = App.inputs || {};
     App.ui.render();App.ui.toast('فاکتور '+N(inv.no)+' تسویه و چاپ شد؛ میز آزاد گردید.'+(club.ok?' لینک فاکتور برای مشتری ارسال شد.':''),'ok');
     if(!club.ok&&club.error)App.ui.toast(club.error,'err');
   }
+  function applyPaymentDiscount(o) {
+    const p=stInit().cPay,parsed=App.pay.parseDiscountInput(p.discountEntry);
+    if(!parsed.ok)return App.ui.toast(parsed.error,'err');
+    const allowed=App.domain.discountAllowed(o,parsed.patch,'discount.invoice');if(!allowed.ok)return App.ui.toast(allowed.error,'err');
+    const next=App.domain.totals(Object.assign({},o,{discount:parsed.patch})),paid=App.model.paid(o);
+    if(next.total<paid)return App.ui.toast('تخفیف از مبلغی که تاکنون دریافت شده بیشتر است؛ تخفیف کمتر وارد کنید.','err');
+    App.store.commit(()=>{o.discount=parsed.patch;o.updatedAt=Date.now();},'discount.invoice','اعمال تخفیف '+allowed.percent+'٪ روی فاکتور '+N(o.no),{after:U.clone(parsed.patch),entityType:'order',entityId:o.id});
+    p.discountEntry='';p.amount=App.model.remaining(o);
+    if(p.method==='dongi'&&p.dongiStage==='method'){const batch=App.pay.itemBatch(o,p.selectedItems);if(batch.ok)p.amount=batch.amount;}
+    refresh();App.ui.toast('تخفیف '+M(allowed.amount)+' ('+N(allowed.percent)+'٪) اعمال شد؛ ماندهٔ جدید '+M(App.model.remaining(o)),'ok');
+  }
   async function addPaymentByMethod(o, method) {
     const p=stInit().cPay, dongi=p.method==='dongi';
     if(dongi&&p.dongiStage!=='method')return App.ui.toast('ابتدا اقلام پرداخت را انتخاب و ادامه دهید.','err');
@@ -485,10 +500,16 @@ App.inputs = App.inputs || {};
     App.ui.toast('پرداخت '+methodLabel+' به مبلغ '+M(amount)+' ثبت شد. ماندهٔ فاکتور: '+M(App.model.remaining(o))+(App.model.remaining(o)<=0?'؛ اکنون ثبت تسویهٔ نهایی را بزنید.':''),'ok');
   }
   async function makePayment(o,amount,opt,slotId) {
-    const p=stInit().cPay;
-    const extra={method:opt.method,amount,label:opt.label,slotId,cashReceived:Number(p.cashReceived)||0,customerId:opt.customerId||'',itemAllocations:opt.itemAllocations||[]};
+    const p=stInit().cPay, actor=App.auth.actor(), user=D().users.find(x=>x.id===actor.id), assignedPsp=user&&user.pspId?D().psps.find(x=>x.id===user.pspId):null;
+    const register=user&&user.cashRegisterId?D().cashRegisters.find(x=>x.id===user.cashRegisterId&&x.enabled!==false):null;
+    const fallbackRegister=(D().cashRegisters||[]).find(x=>x.enabled!==false);
+    const receivingRegister=register||fallbackRegister;
+    if(opt.method==='cash'&&user&&user.cashRegisterId&&!register)return {ok:false,error:'صندوق تخصیص‌یافته به کاربر غیرفعال است یا یافت نشد'};
+    const extra={method:opt.method,amount,label:opt.label,slotId,cashReceived:Number(p.cashReceived)||0,customerId:opt.customerId||'',itemAllocations:opt.itemAllocations||[],cashRegisterId:opt.method==='cash'&&receivingRegister?receivingRegister.id:'',cashRegisterName:opt.method==='cash'&&receivingRegister?receivingRegister.name:''};
     if(opt.method==='card'){
-      const psps=App.pay.enabledPsps(), psp=psps.find(x=>x.id===p.pspId)||psps[0];
+      if(user&&user.pspId&&!assignedPsp)return {ok:false,error:'کارتخوان تخصیص‌یافته به کاربر در تنظیمات یافت نشد'};
+      if(assignedPsp&&assignedPsp.enabled===false)return {ok:false,error:'کارتخوان تخصیص‌یافته به کاربر غیرفعال است'};
+      const psps=App.pay.enabledPsps(), psp=assignedPsp||psps.find(x=>x.id===p.pspId)||psps[0];
       if(!psp) return {ok:false,error:'هیچ درگاه PSP فعالی تنظیم نشده است'};
       App.ui.toast('در انتظار پاسخ کارتخوان…');
       const res=await App.pay.pspPay(psp,amount,o.no);
@@ -515,6 +536,7 @@ App.inputs = App.inputs || {};
     },
     'c-waiter': el => withOrder(o=>{ App.store.commit(()=>{o.personnelId=el.value;},'order.edit','تغییر سفارشگیر'); }),
     'c-amount': el => { stInit().cPay.amount=el.value; },
+    'c-pay-discount': el => {const p=stInit().cPay;p.discountEntry=el.value;const o=currentOrder(),node=document.querySelector('[data-pay-discount-preview]');if(!o||!node)return;const parsed=App.pay.parseDiscountInput(el.value);if(!parsed.ok){node.textContent='برای تخفیف درصدی، علامت ٪ را وارد کنید؛ در غیر این صورت مبلغ ثابت اعمال می‌شود.';return;}const next=App.domain.totals(Object.assign({},o,{discount:parsed.patch}));node.textContent='تخفیف محاسبه‌شده: '+M(next.discount)+' · مبلغ فاکتور پس از تخفیف: '+M(next.total); },
     'c-psp': el => { stInit().cPay.pspId=el.value; },
     'c-credit': el => withOrder(o=>assignCreditCustomer(o,App.model.customer(el.value),false)),
     'c-cash': el => { stInit().cPay.cashReceived=el.value; },

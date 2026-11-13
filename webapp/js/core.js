@@ -201,7 +201,7 @@ App.store = (function () {
                  invoiceMessage:'فاکتور شما آماده است: {link}', smsProvider:'android', linkBase:'', consent:true }
         },
         roles:[], users:[], halls:[], tables:[], groups:[], products:[], stations:[], printers:[], psps:[],
-        customers:[], personnel:[], paymentMethods:[], orders:[], invoices:[], transfers:[],
+        customers:[], personnel:[], cashRegisters:[], paymentMethods:[], orders:[], invoices:[], transfers:[],
         printJobs:[], stockMoves:[], audit:[], snapshots:[], processedKeys:[], clubMessages:[]
       };
     },
@@ -212,7 +212,7 @@ App.store = (function () {
       d.roles = App.util.clone(App.BUILTIN_ROLES);
       d.users = [
         { id:'u-admin', username:'admin', name:'مدیر کل', passHash:hash('1234'), role:'admin', roleIds:['role-admin'], permissions:App.ALL_PERMISSIONS.slice(), active:true, createdAt:Date.now() },
-        { id:'u-cashier', username:'cashier', name:'خانم احمدی - صندوق', passHash:hash('2222'), role:'cashier', roleIds:['role-cashier'], permissions:App.BUILTIN_ROLES[2].permissions.slice(), active:true, createdAt:Date.now() },
+        { id:'u-cashier', username:'cashier', name:'خانم احمدی - صندوق', passHash:hash('2222'), role:'cashier', roleIds:['role-cashier'], permissions:App.BUILTIN_ROLES[2].permissions.slice(), pspId:'psp1', cashRegisterId:'cash-main', active:true, createdAt:Date.now() },
         { id:'u-waiter', username:'waiter', name:'آقای رضایی - سالن', passHash:hash('3333'), role:'waiter', roleIds:['role-waiter'], permissions:App.BUILTIN_ROLES[3].permissions.slice(), active:true, createdAt:Date.now() },
         { id:'u-kitchen', username:'kitchen', name:'آشپزخانه', passHash:hash('4444'), role:'kitchen', roleIds:['role-kitchen'], permissions:App.BUILTIN_ROLES[4].permissions.slice(), active:true, createdAt:Date.now() }
       ];
@@ -220,6 +220,7 @@ App.store = (function () {
         { id:'per1', code:'P-01', name:'آقای رضایی', phone:'۰۹۱۲۱۱۱۲۲۳۳', userId:'u-waiter', commissionPercent:3, active:true },
         { id:'per2', code:'P-02', name:'خانم احمدی', phone:'۰۹۱۲۴۴۴۵۵۶۶', userId:'u-cashier', commissionPercent:2, active:true }
       ];
+      d.cashRegisters = [{id:'cash-main',name:'صندوق اصلی',code:'CASH-01',enabled:true}];
       d.customers = [
         { id:'c1', code:'C-1001', firstName:'علی', lastName:'محمدی', phone:'۰۹۱۲۳۴۵۶۷۸۹', creditLimit:2000000, credit:0, consent:true, purchaseCount:1, purchaseTotal:301000, createdAt:Date.now()-86400000 },
         { id:'c2', code:'C-1002', firstName:'شرکت', lastName:'نمونه', phone:'۰۲۱-۸۸۸۸۸۸۸۸', creditLimit:5000000, credit:0, consent:true, purchaseCount:0, purchaseTotal:0, createdAt:Date.now()-172800000 }
