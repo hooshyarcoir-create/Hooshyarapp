@@ -54,9 +54,10 @@ window.App=window.App||{}; App.actions=App.actions||{}; App.inputs=App.inputs||{
     }});
   }
   function base(){const st=App.ui.state;let visible=TABS.filter(t=>App.auth.can(t[2]));if(!visible.length)return '<div class="card">دسترسی اطلاعات پایه ندارید.</div>';if(!visible.some(t=>t[0]===st.baseTab))st.baseTab=visible[0][0];const tab=st.baseTab,kind=(TABS.find(t=>t[0]===tab)||[])[3]||tab;const rows=D()[kind]||[];
-    let h=V.head('اطلاعات پایه','تعریف و نگهداری داده‌های عملیاتی، کاربران و موجودی',V.btn('base-bulk','ویرایش گروهی','layers','btn-sm')+V.btn('base-add','افزودن','plus','btn-primary btn-sm'));
-    h+='<div class="chips">'+visible.map(t=>'<button class="chip '+(tab===t[0]?'active':'')+'" data-action="base-tab" data-id="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>';
-    h+='<section class="card"><div class="card-head"><h3>'+((TABS.find(t=>t[0]===tab)||[])[1])+'</h3><span class="spacer"></span><span class="badge">'+N(rows.length)+' مورد</span></div><div class="table-scroll"><table class="tbl"><thead><tr>'+labels[kind].map(x=>'<th>'+x+'</th>').join('')+'<th>عملیات</th></tr></thead><tbody>';
+    let h=V.head('اطلاعات پایه','تعریف و نگهداری داده‌های عملیاتی، کاربران و موجودی',V.btn('base-add','افزودن','plus','btn-primary btn-sm'));
+    h+='<section class="card"><div class="card-head"><h3>'+((TABS.find(t=>t[0]===tab)||[])[1])+'</h3><span class="spacer"></span><span class="badge">'+N(rows.length)+' مورد</span></div>'+
+      (kind==='products'&&App.auth.can('menu.manage')?'<div class="base-product-tools">'+V.btn('base-bulk','ویرایش گروهی کالاها','layers','btn-sm btn-outline')+'</div>':'')+
+      '<div class="table-scroll"><table class="tbl"><thead><tr>'+labels[kind].map(x=>'<th>'+x+'</th>').join('')+'<th>عملیات</th></tr></thead><tbody>';
     h+=rows.map(x=>'<tr>'+recordText(kind,x).map(v=>'<td>'+U.esc(v)+'</td>').join('')+'<td>'+(kind==='printers'?'<button class="btn btn-sm btn-outline" data-action="base-test-printer" data-id="'+x.id+'">تست چاپ</button> ':'')+'<button class="btn btn-sm" data-action="base-edit" data-kind="'+kind+'" data-id="'+x.id+'">ویرایش</button> <button class="btn btn-sm btn-danger" data-action="base-delete" data-kind="'+kind+'" data-id="'+x.id+'">حذف</button></td></tr>').join('')||'<tr><td colspan="'+(labels[kind].length+1)+'" class="muted">اطلاعاتی ثبت نشده است.</td></tr>';
     h+='</tbody></table></div></section>';
     if(kind==='products')h+='<div class="card"><b>کنترل موجودی</b><p class="muted tiny">موجودی با ثبت سفارش کسر می‌شود؛ حذف منطقی و بازیابی فاکتور نیز گردش موجودی را اصلاح می‌کند. هشدار کمبود در پیشخوان نمایش داده می‌شود.</p></div>';
@@ -72,6 +73,8 @@ window.App=window.App||{}; App.actions=App.actions||{}; App.inputs=App.inputs||{
     h+='</section>';return h;
   }
   Object.assign(App.actions,{
+    'base-nav':el=>{App.ui.state.baseTab=el.dataset.tab;App.ui.state.baseMenuOpen=true;App.ui.go('base');},
+    'base-menu-toggle':()=>{App.ui.state.baseMenuOpen=!App.ui.state.baseMenuOpen;App.ui.render();},
     'base-tab':el=>{App.ui.state.baseTab=el.dataset.id;App.ui.render();},
     'base-add':()=>entityForm((TABS.find(t=>t[0]===App.ui.state.baseTab)||[])[3]||App.ui.state.baseTab,null),
     'base-edit':el=>{let obj=(D()[el.dataset.kind]||[]).find(x=>x.id===el.dataset.id);if(obj&&el.dataset.kind==='roles'&&obj.builtin)return App.ui.toast('سطوح دسترسی پیش‌فرض محافظت‌شده هستند؛ یک سطح سفارشی بسازید.','err');if(obj)entityForm(el.dataset.kind,obj);},

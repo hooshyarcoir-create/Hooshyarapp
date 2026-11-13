@@ -57,7 +57,7 @@ App.inputs = App.inputs || {};
         U.esc(x.customer&&x.customer.name?x.customer.name:'—')+'<div class="tiny faint">'+U.esc(x.createdByName||'—')+'</div>',
         '<span class="num strong">'+M(Number(x.total)||App.model.totals(x).total)+'</span>',
         '<div class="row tight">'+B('inv-detail','جزئیات','receipt','btn-sm',{id:x.id})+
-          (isInv&&x.status!=='deleted'&&App.auth.can('invoice.edit')?B('inv-edit','ویرایش','edit','btn-sm',{id:x.id}):'')+
+          (isInv&&x.status!=='deleted'&&App.auth.can('invoice.edit')?B('inv-edit',(x.paidAt||x.settledAt||x.status==='paid'||x.status==='edited')?'ویرایش فاکتور تسویه‌شده':'ویرایش','edit','btn-sm',{id:x.id}):'')+
           (isInv&&x.status!=='deleted'&&App.auth.can('invoice.delete')&&((!x.paidAt&&!x.settledAt&&x.status!=='paid'&&x.status!=='edited')||App.auth.can('invoice.deletePaid'))?B('inv-delete','حذف','trash','btn-sm btn-danger',{id:x.id}):'')+
           (isInv&&x.status==='deleted'&&App.auth.can('invoice.restore')?B('inv-restore','بازیابی','refresh','btn-sm btn-outline',{id:x.id}):'')+
         '</div>' ];
@@ -124,7 +124,7 @@ App.inputs = App.inputs || {};
     if(isInv&&x.status!=='deleted') {
       if(App.auth.can('club.manage')) buttons.unshift({label:'لینک آنلاین مشتری',icon:'send',onClick:()=>{App.ui.close();sendLink(x);}});
       if(App.auth.can('invoice.reprint')) buttons.unshift({label:'چاپ مجدد',icon:'print',onClick:async()=>{App.ui.close();const r=await App.print.printInvoice(x,w,{reprint:true});App.ui.toast(r.ok?'چاپ مجدد ثبت شد.':'خطای چاپ: '+(r.error||''),r.ok?'ok':'err');App.ui.refresh();}});
-      if(App.auth.can('invoice.edit')) buttons.unshift({label:'ویرایش',icon:'edit',onClick:()=>{App.ui.close();editInvoice(x);}});
+      if(App.auth.can('invoice.edit')) buttons.unshift({label:(x.paidAt||x.settledAt||x.status==='paid'||x.status==='edited')?'ویرایش فاکتور تسویه‌شده':'ویرایش فاکتور','icon':'edit',onClick:()=>{App.ui.close();editInvoice(x);}});
     }
     App.ui.modal({title:'فاکتور شماره '+N(x.no),size:'wide',body:detailBody(x),buttons});
   }

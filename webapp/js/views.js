@@ -57,12 +57,13 @@ App.views = (function () {
     const st = App.ui.state, s = D().settings;
     if (st.loginStep !== 2 || !st.loginUserId) {
       const users = App.auth.users();
-      return '<div class="login-box wide">' +
-        '<div class="login-head"><div class="brand-mark">ه</div><h2>'+U.esc(s.restaurantName)+'</h2><p>مرحله ۱ از ۲ · کاربر خود را انتخاب کنید</p></div>' +
-        '<div class="user-picker">' + users.map(u =>
-          '<button class="user-pick" data-action="login-pick" data-id="'+u.id+'"><span class="avatar">'+U.esc((u.name||'?').slice(0,1))+'</span>'+
-          '<span><b>'+U.esc(u.name)+'</b><small>@'+U.esc(u.username)+' · '+U.esc(App.auth.roleLabel(u))+'</small></span>'+I('back','sm')+'</button>').join('') + '</div>' +
-        (users.length ? '' : empty('هیچ کاربر فعالی تعریف نشده است.','users')) +
+      const selected=st.loginCandidateId||'';
+      const picked=users.find(u=>u.id===selected);
+      return '<div class="login-box">' +
+        '<div class="login-head"><div class="brand-mark">ه</div><h2>'+U.esc(s.restaurantName)+'</h2><p>مرحله ۱ از ۲ · کاربر خود را از فهرست انتخاب کنید</p></div>' +
+        (users.length ? '<label class="field login-user-field"><span>کاربر ورود</span><div class="login-select-wrap"><select class="login-user-select" data-input="login-user" aria-label="انتخاب کاربر"><option value="">— انتخاب کاربر —</option>'+users.map(u=>'<option value="'+U.esc(u.id)+'" '+(u.id===selected?'selected':'')+'>'+U.esc(u.name)+' · '+U.esc(u.username)+' · '+U.esc(App.auth.roleLabel(u))+'</option>').join('')+'</select><span class="login-select-icon">⌄</span></div></label>'+
+          '<div class="login-user-preview '+(picked?'ready':'')+'">'+(picked?'<span class="avatar">'+U.esc((picked.name||'?').slice(0,1))+'</span><span><b>'+U.esc(picked.name)+'</b><small>'+U.esc(App.auth.roleLabel(picked))+'</small></span><span class="badge accent">انتخاب شد</span>':'<span class="login-preview-dot"></span><span><b>ابتدا کاربر را انتخاب کنید</b><small>نقش کاربر پس از انتخاب نمایش داده می‌شود</small></span>')+'</div>'+
+          '<button class="btn btn-primary btn-block btn-lg" data-action="login-continue" '+(picked?'':'disabled')+'>'+I('check')+' ادامه ورود</button>' : empty('هیچ کاربر فعالی تعریف نشده است.','users')) +
         '<div class="login-foot">سامانه مدیریت عملیات رستوران · نسخه '+App.version+'</div></div>';
     }
     const u = App.auth.users().find(x=>x.id===st.loginUserId);
@@ -118,6 +119,10 @@ App.views = (function () {
 })();
 
 Object.assign(App.actions, {
-  'login-pick': el => { App.ui.state.loginUserId = el.dataset.id; App.ui.state.loginStep = 2; App.ui.render(); },
-  'login-back': () => { App.ui.state.loginStep = 1; App.ui.state.loginUserId = null; App.ui.render(); }
+  'login-continue': () => {
+    const st=App.ui.state; if(!st.loginCandidateId)return App.ui.toast('ابتدا یک کاربر انتخاب کنید.','err');
+    st.loginUserId=st.loginCandidateId;st.loginStep=2;App.ui.render();
+  },
+  'login-back': () => { App.ui.state.loginStep=1;App.ui.state.loginUserId=null;App.ui.render(); }
 });
+App.inputs['login-user']=el=>{App.ui.state.loginCandidateId=el.value||'';App.ui.render();};

@@ -9,7 +9,7 @@ App.formHandlers = App.formHandlers || {};
 App.ui = (function () {
   const U = App.util;
   const state = {
-    screen:'console', hallId:null, groupId:'all', orderId:null, loginStep:1, loginUserId:null, baseTab:'products',
+    screen:'console', hallId:null, groupId:'all', orderId:null, loginStep:1, loginUserId:null, loginCandidateId:'', baseTab:'products', baseMenuOpen:false,
     invTab:'current', invSel:null, invWidth:null, invPrinterId:null,
     payOrderId:null, slotDraft:{}, menuTab:'groups', settingsTab:'general',
     reportRange:'today', productSearch:'', adminSearch:''
@@ -25,13 +25,21 @@ App.ui = (function () {
     { screen:'base', label:'اطلاعات پایه', icon:'book', perm:'menu.view' },
     { screen:'settings', label:'تنظیمات سامانه', icon:'settings', perm:'settings.manage' }
   ];
+  const BASE_NAV = [
+    {id:'products',label:'کالاها و موجودی',perm:'menu.manage'}, {id:'groups',label:'گروه‌های کالا',perm:'menu.manage'},
+    {id:'halls',label:'سالن‌ها',perm:'tables.manage'}, {id:'tables',label:'میزها',perm:'tables.manage'},
+    {id:'stations',label:'ایستگاه‌های چاپ',perm:'printers.manage'}, {id:'printers',label:'چاپگرها',perm:'printers.manage'},
+    {id:'users',label:'کاربران',perm:'users.manage'}, {id:'roles',label:'سطوح دسترسی',perm:'roles.manage'},
+    {id:'personnel',label:'پرسنل و پورسانت',perm:'users.manage'}, {id:'customers',label:'مشتریان',perm:'customers.manage'},
+    {id:'payments',label:'روش‌های پرداخت',perm:'settings.manage'}, {id:'psps',label:'کارتخوان‌ها و PSP',perm:'psp.manage'}
+  ];
   const TITLES = {
     console:['کنسول فروش','ثبت سفارش، مدیریت سالن، پرداخت و چاپ'],
+    dashboard:['پیشخوان مدیریتی','خلاصه فروش، عملکرد و هشدارها'],
     invoices:['مدیریت فاکتورها','جاری، تسویه‌شده، ویرایش‌شده و حذف‌شده'],
     reports:['گزارشات مدیریتی','تحلیل فروش، پرداخت، عملکرد و موجودی'],
     base:['اطلاعات پایه','مدیریت منو، سالن، موجودی، کاربران و مشتریان'],
-    settings:['تنظیمات سامانه','پیکربندی رستوران، مالیات، چاپ و پشتیبان‌گیری'],
-    dashboard:['پیشخوان مدیریت','شاخص‌های لحظه‌ای فروش، عملکرد و هشدارها']
+    settings:['تنظیمات سامانه','پیکربندی رستوران، مالیات، چاپ و پشتیبان‌گیری']
   };
 
   function navItems() {
@@ -73,9 +81,17 @@ App.ui = (function () {
     document.getElementById('page-sub').textContent = t[1];
 
     document.getElementById('side-nav').innerHTML = items.map(n => {
+      if(n.screen==='base'){
+        const children=BASE_NAV.filter(x=>App.auth.can(x.perm));
+        const expanded=state.screen==='base'||state.baseMenuOpen;
+        return '<section class="nav-group '+(state.screen==='base'?'active':'')+'"><div class="nav-group-head">'+
+          '<button class="nav-item '+(state.screen==='base'?'active':'')+'" data-action="nav" data-screen="base">'+U.icon('book')+'<span>اطلاعات پایه</span></button>'+
+          '<button class="nav-group-toggle" data-action="base-menu-toggle" aria-label="باز و بسته کردن زیرمنو" aria-expanded="'+expanded+'">'+(expanded?'−':'+')+'</button></div>'+
+          (expanded?'<div class="nav-submenu">'+children.map(x=>'<button class="nav-subitem '+(state.screen==='base'&&state.baseTab===x.id?'active':'')+'" data-action="base-nav" data-tab="'+x.id+'">'+U.esc(x.label)+'</button>').join('')+'</div>':'')+'</section>';
+      }
       const badge = n.screen === 'invoices' ? App.model.openOrders().length : 0;
-      return '<button class="nav-item ' + (state.screen===n.screen?'active':'') + '" data-action="nav" data-screen="' + n.screen + '">' +
-        U.icon(n.icon) + '<span>' + n.label + '</span>' + (badge ? '<span class="badge accent">' + U.num(badge) + '</span>' : '') + '</button>';
+      return '<button class="nav-item '+(state.screen===n.screen?'active':'')+'" data-action="nav" data-screen="'+n.screen+'">'+
+        U.icon(n.icon)+'<span>'+n.label+'</span>'+(badge?'<span class="badge accent">'+U.num(badge)+'</span>':'')+'</button>';
     }).join('');
     const short = { console:'فروش', invoices:'فاکتورها', reports:'گزارش', base:'اطلاعات پایه', settings:'تنظیمات' };
     const bottom = ['console','invoices','reports','base','settings'].map(s => items.find(n => n.screen===s)).filter(Boolean).slice(0,5);
@@ -285,7 +301,7 @@ document.addEventListener('change', (e) => {
 });
 
 Object.assign(App.actions, {
-  'nav': el => App.ui.go(el.dataset.screen),
+  'nav': el => {if(el.dataset.screen==='base')App.ui.state.baseMenuOpen=true;App.ui.go(el.dataset.screen);},
   'modal-close': () => App.ui.close(),
   'logout': () => App.ui.confirm('از حساب کاربری خارج میشوید؟ اطلاعات ذخیره باقی میماند.', () => { App.auth.logout(); App.ui.render(); }),
   'toggle-menu': () => { const sb = document.querySelector('.sidebar'); if (sb) sb.classList.toggle('open'); },
