@@ -465,3 +465,81 @@ table.tbl .num { direction: ltr; }
 .table-count-form .field { width:min(300px,100%); margin:0; }
 .table-count-form .btn { min-height:42px; }
 @media(max-width:640px) { .hall-management-grid { grid-template-columns:minmax(0,1fr); } .table-count-form { align-items:stretch; } .table-count-form .field,.table-count-form .btn { width:100%; } .hall-table-section .card-head { flex-wrap:wrap; } }
+
+/* POS terminal layout: invoice left, menu and tables center, quick actions right. */
+.pos-console { min-width:0; }
+.pos-workspace { direction:rtl; grid-template-columns:76px minmax(0,1.2fr) minmax(310px,.92fr); gap:10px; align-items:stretch; min-height:480px; height:calc(100dvh - 235px); }
+.pos-workspace > * { min-width:0; min-height:0; }
+.pos-action-rail { display:flex; flex-direction:column; align-items:stretch; gap:9px; padding:8px 6px; border:1px solid var(--line); border-radius:14px; background:#11151b; }
+.pos-rail-button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; min-height:82px; padding:8px 3px; border:1px solid transparent; border-radius:11px; color:#f4f7fb; background:#252b35; font-size:11px; font-weight:700; line-height:1.5; text-align:center; transition:transform .14s,filter .14s,border-color .14s; }
+.pos-rail-button:hover:not(:disabled) { transform:translateY(-2px); filter:brightness(1.12); border-color:rgba(255,255,255,.25); }
+.pos-rail-button svg.ic { width:29px; height:29px; }
+.pos-rail-pay { color:#fff; background:linear-gradient(145deg,#37bd69,#12843e); }
+.pos-rail-customer { color:#fff; background:linear-gradient(145deg,#3689ef,#2159a8); }
+.pos-rail-invoices { background:#363d49; }
+.pos-rail-button:disabled { opacity:.38; cursor:not-allowed; filter:saturate(.35); }
+.pos-rail-count { display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:auto; padding:8px 2px; color:var(--muted); text-align:center; }
+.pos-rail-count svg { width:17px; height:17px; }
+.pos-rail-count b { color:var(--text); font-size:19px; line-height:1.2; }
+.pos-rail-count small { font-size:9px; white-space:nowrap; }
+.pos-catalog { display:grid; grid-template-rows:minmax(170px, .85fr) minmax(220px,1.15fr); gap:10px; min-height:0; }
+.pos-tables-panel { min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:10px; }
+.pos-hall-toolbar { display:flex; align-items:center; gap:9px; margin-bottom:8px; min-width:0; }
+.pos-hall-toolbar .chips { flex:1; min-width:0; }
+.pos-hall-toolbar .pill { flex:none; }
+.pos-table-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:8px; min-height:0; overflow:auto; align-content:start; padding:2px 3px 6px; }
+.pos-table-card { min-height:78px !important; width:100%; aspect-ratio:1; max-width:100px; justify-self:center; padding:7px 5px !important; border-radius:50% !important; align-items:center; justify-content:center; text-align:center !important; background:#4b4394 !important; border:2px solid rgba(255,255,255,.07) !important; box-shadow:0 3px 10px rgba(0,0,0,.18); }
+.pos-table-card::before { display:none; }
+.pos-table-card .t-top { display:flex; flex-direction:column; align-items:center; gap:1px; }
+.pos-table-card .t-name { color:#fff; font-size:18px !important; font-weight:700; line-height:1.25; }
+.pos-table-card .t-status { font-size:9px; }
+.pos-table-card .t-status .badge { font-size:8px; padding:0 5px; background:rgba(255,255,255,.13); color:#fff; }
+.pos-table-card .t-meta { padding:0 !important; gap:0 !important; color:#eee; font-size:9px; line-height:1.2; }
+.pos-table-card .t-meta > span:not(:first-child) { display:none; }
+.pos-table-card.is-free { background:#4b4394 !important; }
+.pos-table-card.is-occupied { background:#aa4e53 !important; }
+.pos-table-card.selected { outline:2px solid #f6b45b; outline-offset:2px; }
+.pos-products { display:flex; flex-direction:column; min-height:0; overflow:hidden; padding:12px; }
+.pos-products .card-head { margin-bottom:8px; }
+.pos-search { flex:none; margin-bottom:8px; }
+.pos-groups { flex:none; margin-bottom:7px; }
+.pos-product-grid { min-height:0; overflow:auto; align-content:start; padding:2px; grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); }
+.pos-product-grid .product-card { min-height:103px; }
+.pos-order-column { display:flex; flex-direction:column; gap:10px; height:100%; overflow:auto; padding:1px 3px 4px 0; }
+.pos-order-column > .card { flex:none; }
+.pos-order-column .cart-lines { max-height:31vh; }
+.pos-pay-panel { margin-top:0 !important; }
+.pos-pay-panel .method-grid { grid-template-columns:repeat(auto-fill,minmax(85px,1fr)); }
+.pos-console .page-head { margin-bottom:11px; }
+@media(max-width:1200px) {
+  .pos-workspace { grid-template-columns:68px minmax(0,1.05fr) minmax(285px,.95fr); gap:8px; }
+  .pos-table-grid { grid-template-columns:repeat(auto-fill,minmax(67px,1fr)); }
+  .pos-table-card { min-height:68px !important; }
+}
+@media(max-width:960px) {
+  .pos-workspace { height:auto; min-height:0; grid-template-columns:minmax(0,1fr); }
+  .pos-action-rail { order:0; flex-direction:row; align-items:stretch; padding:6px; }
+  .pos-rail-button { flex:1; min-height:66px; }
+  .pos-rail-count { min-width:58px; margin:0; justify-content:center; }
+  .pos-catalog { order:1; grid-template-rows:minmax(180px,auto) minmax(300px,auto); }
+  .pos-order-column { order:2; height:auto; overflow:visible; }
+  .pos-order-column .cart-lines { max-height:none; }
+  .pos-table-grid { max-height:220px; }
+  .pos-product-grid { max-height:50vh; }
+}
+@media(max-width:640px) {
+  .pos-console .page-head { align-items:flex-start; }
+  .pos-console .page-head > div:last-child { width:100%; display:flex; gap:5px; overflow-x:auto; }
+  .pos-console .page-head .btn { flex:1; }
+  .pos-workspace { gap:8px; }
+  .pos-action-rail { position:sticky; top:0; z-index:5; background:rgba(17,21,27,.96); backdrop-filter:blur(8px); }
+  .pos-rail-button { min-height:60px; font-size:10px; }
+  .pos-rail-button svg.ic { width:25px; height:25px; }
+  .pos-rail-count { min-width:46px; font-size:9px; }
+  .pos-hall-toolbar { align-items:flex-start; }
+  .pos-hall-toolbar .pill { display:none; }
+  .pos-table-grid { grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; }
+  .pos-table-card { min-height:62px !important; }
+  .pos-table-card .t-name { font-size:15px !important; }
+  .pos-product-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
+}
