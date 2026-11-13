@@ -65,14 +65,21 @@ App.inputs = App.inputs || {};
     const actor=App.auth.actor(),user=d.users.find(x=>x.id===actor.id),assignedPsp=user&&d.psps.find(x=>x.id===user.pspId),assignedRegister=user&&d.cashRegisters.find(x=>x.id===user.cashRegisterId),fallbackPsp=App.pay.enabledPsps()[0],fallbackRegister=(d.cashRegisters||[]).find(x=>x.enabled!==false);
     h+='<div class="full tiny muted">کارتخوان کاربر: '+U.esc(assignedPsp?assignedPsp.name:(fallbackPsp?fallbackPsp.name:'تخصیص‌نیافته'))+' · صندوق نقدی: '+U.esc(assignedRegister?assignedRegister.name:(fallbackRegister?fallbackRegister.name:'تخصیص‌نیافته'))+'</div>'+
       '<div class="form-grid"><label class="field full"><span>تخفیف فاکتور (مبلغ یا درصد مثل 10%)</span><input type="text" data-input="c-pay-discount" value="'+U.esc(p.discountEntry||'')+'" placeholder="مثلاً 10% یا 50000"></label><div class="full tiny muted" data-pay-discount-preview>تخفیف فعلی: '+M(App.domain.discountEquivalent(o).amount)+' · '+N(App.domain.discountEquivalent(o).percent)+'٪</div><button class="btn btn-sm" data-action="c-apply-pay-discount">اعمال تخفیف</button></div>';
-    const configured=(d.paymentMethods||[]).filter(x=>x.enabled!==false&&(x.kind!=='credit'||App.auth.can('payment.credit')));
-    const methods=configured.map(x=>({id:x.kind==='split'?'dongi':x.kind,label:x.kind==='other'?'کارت به کارت':x.name,icon:x.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[x.kind]||'tag')}));
+    const configured=(d.paymentMethods||[]).slice();
+    [{id:'cash',kind:'cash',name:'نقدی',icon:'cash'},{id:'card',kind:'card',name:'کارتخوان',icon:'wallet'},{id:'credit',kind:'credit',name:'اعتباری',icon:'note'},{id:'dongi',kind:'split',name:'دنگی',icon:'split'},{id:'other',kind:'other',name:'کارت به کارت',icon:'tag'}].forEach(def=>{
+      if(!configured.some(x=>x.kind===def.kind||x.id===def.id))configured.push(Object.assign({enabled:true},def));
+    });
+    const methods=configured.filter(x=>x.kind!=='credit'||App.auth.can('payment.credit')).map(x=>({id:x.kind==='split'?'dongi':x.kind,label:x.kind==='other'?'کارت به کارت':x.name,icon:x.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[x.kind]||'tag'),enabled:x.enabled!==false}));
     const payMethods=methods.filter(x=>['cash','card','credit','other'].includes(x.id));
-    if(!dongi) {
-      if(rem<=0)h+='<div class="full badge ok">مبلغ فاکتور کاملاً دریافت شده است؛ برای صدور فاکتور نهایی، ثبت تسویه را بزنید.</div>';
-      else h+='<label class="field full"><span>مبلغ پرداخت این مرحله ('+U.esc(D().settings.currency)+')</span><input type="number" data-input="c-amount" value="'+(p.amount!=null?p.amount:rem)+'" min="1" max="'+rem+'"></label>'+
+    const methodButton=m=>'<button class="method-btn" '+(!m.enabled||rem<=0?'disabled':'')+(m.id==='dongi'?' data-action="c-method" data-method="dongi"':' data-action="c-add-method" data-method="'+U.esc(m.id)+'"')+'>'+I(m.icon)+U.esc(m.label)+'</button>';
+    if(rem<=0) {
+      h+='<div class="full badge ok">ماندهٔ قابل پرداخت صفر است؛ برای نهایی‌کردن، «ثبت تسویه نهایی» را بزنید. روش‌های پرداخت تا ایجاد مانده غیرفعال هستند.</div>'+
+        '<div class="full method-grid">'+methods.map(methodButton).join('')+'</div>'+
+        '<button class="btn btn-primary full" data-action="c-finalize-payment">ثبت تسویه نهایی</button>';
+    } else if(!dongi) {
+      h+='<label class="field full"><span>مبلغ پرداخت این مرحله ('+U.esc(D().settings.currency)+')</span><input type="number" data-input="c-amount" value="'+(p.amount!=null?p.amount:rem)+'" min="1" max="'+rem+'"></label>'+
         '<div class="full tiny muted">مبلغ را وارد کنید، سپس روش پرداخت را بزنید تا همان پرداخت ثبت شود.</div>'+
-        '<div class="method-grid">'+methods.map(m=>m.id==='dongi'?'<button class="method-btn" data-action="c-method" data-method="dongi">'+I(m.icon)+U.esc(m.label)+'</button>':'<button class="method-btn" data-action="c-add-method" data-method="'+U.esc(m.id)+'">'+I(m.icon)+U.esc(m.label)+'</button>').join('')+'</div>';
+        '<div class="method-grid">'+methods.map(methodButton).join('')+'</div>';
     } else {
       const items=dongiItems(o),selected=p.selectedItems||{},stage=p.dongiStage||'items';
       if(stage==='items') {
