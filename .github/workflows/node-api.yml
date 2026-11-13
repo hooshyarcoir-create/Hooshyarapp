@@ -1,0 +1,33 @@
+name: Node.js API checks
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'server.js'
+      - 'backend/node/**'
+      - 'tools/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/node-api.yml'
+  pull_request:
+    paths:
+      - 'server.js'
+      - 'backend/node/**'
+      - 'tools/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/node-api.yml'
+  workflow_dispatch:
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test

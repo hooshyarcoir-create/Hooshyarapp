@@ -2,34 +2,20 @@
   "name": "hooshyar-pos",
   "version": "2.0.0",
   "private": true,
-  "description": "هوشیار POS - نسخه وب/PWA و برنامه‌های مستقل Android و Windows با کارکرد آفلاین و همگام‌سازی اختیاری",
+  "description": "هوشیار POS - API همگام‌سازی و چاپ شبکه‌ای برای کلاینت‌های مستقل",
   "author": "Hooshyar POS Team",
-  "main": "electron/main.cjs",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "check": "node tools/check.js && node tools/check-node-api.js",
-    "test": "node tools/check.js && node tools/check-node-api.js",
-    "desktop": "electron electron/main.cjs",
-    "desktop:win": "electron-builder --win nsis --publish never"
+    "test": "node tools/check.js && node tools/check-node-api.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT",
   "dependencies": {
     "mssql": "^12.7.14",
     "mysql2": "^3.24.6"
-  },
-  "devDependencies": {
-    "electron": "^45.3.2",
-    "electron-builder": "^26.18.0"
-  },
-  "build": {
-    "appId": "ir.hooshyar.pos",
-    "productName": "Hooshyar POS",
-    "directories": { "output": "release" },
-    "files": ["electron/**/*", "webapp/**/*", "package.json"],
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true },
-    "npmRebuild": false
   }
 }

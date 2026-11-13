@@ -1,20 +1,9 @@
-/** Hooshyar POS Node.js host: static UI, shared offline-sync API, and print proxy. */
+/** Hooshyar POS Node.js sync and network-print API. No client UI is bundled. */
 'use strict';
 const http = require('http');
 const net = require('net');
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const { createSyncStore } = require('./backend/node/sync-store');
-
-const ROOT = path.join(__dirname, 'webapp');
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2',
-  '.woff': 'font/woff', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8'
-};
 
 function send(res, status, body, type = 'application/json; charset=utf-8', extraHeaders = {}) {
   res.writeHead(status, Object.assign({
@@ -160,21 +149,10 @@ function createServer(options = {}) {
       }
     }
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { ok: false, error: 'متد پشتیبانی نمی‌شود' });
-    const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-    const full = path.resolve(ROOT, rel);
-    if (!full.startsWith(ROOT + path.sep) && full !== path.join(ROOT, 'index.html')) {
-      return json(res, 403, { ok: false, error: 'دسترسی مجاز نیست' });
-    }
-    fs.stat(full, (error, stat) => {
-      if (error || !stat.isFile()) return json(res, 404, { ok: false, error: 'یافت نشد' });
-      const type = MIME[path.extname(full).toLowerCase()] || 'application/octet-stream';
-      res.writeHead(200, {
-        'Content-Type': type, 'Content-Length': stat.size,
-        'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff'
-      });
-      if (req.method === 'HEAD') return res.end();
-      fs.createReadStream(full).pipe(res);
+    return json(res, 404, {
+      ok: false,
+      service: 'Hooshyar POS API',
+      error: 'در این نسخه رابط وب میزبانی نمی‌شود؛ فقط API همگام‌سازی و چاپ فعال است.'
     });
   });
 }
@@ -183,7 +161,7 @@ if (require.main === module) {
   const server = createServer();
   const port = Number(process.env.PORT || 3000);
   const host = process.env.HOST || '0.0.0.0';
-  server.listen(port, host, () => console.log(`Hooshyar POS Node.js listening on ${host}:${port}`));
+  server.listen(port, host, () => console.log(`Hooshyar POS API listening on ${host}:${port}`));
   const shutdown = () => server.close(() => process.exit(0));
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
