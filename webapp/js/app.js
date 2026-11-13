@@ -27,7 +27,7 @@ App.ui = (function () {
   ];
   const BASE_NAV = [
     {id:'products',label:'کالاها و موجودی',perm:'menu.manage'}, {id:'groups',label:'گروه‌های کالا',perm:'menu.manage'},
-    {id:'halls',label:'سالن‌ها',perm:'tables.manage'}, {id:'tables',label:'میزها',perm:'tables.manage'},
+    {id:'halls',label:'سالن و میزها',perm:'tables.manage'},
     {id:'stations',label:'ایستگاه‌های چاپ',perm:'printers.manage'}, {id:'printers',label:'چاپگرها',perm:'printers.manage'},
     {id:'users',label:'کاربران',perm:'users.manage'}, {id:'roles',label:'سطوح دسترسی',perm:'roles.manage'},
     {id:'personnel',label:'پرسنل و پورسانت',perm:'users.manage'}, {id:'customers',label:'مشتریان',perm:'customers.manage'},
