@@ -444,3 +444,24 @@ table.tbl .num { direction: ltr; }
 .nav-subitem:hover { color:#fff; background:var(--surface-2); }
 .nav-subitem.active { color:var(--accent); background:rgba(240,164,75,.11); font-weight:700; }
 .base-product-tools { display:flex; justify-content:flex-start; margin:0 0 10px; }
+
+/* Hall-first table management: choose a hall, then generate and edit its table set. */
+.hall-management-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+.hall-management-card { display:flex; flex-direction:column; gap:8px; padding:13px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); }
+.hall-open { display:flex; align-items:center; gap:12px; width:100%; padding:9px 7px; text-align:right; color:var(--text); background:transparent; border:0; border-radius:9px; }
+.hall-open:hover { background:var(--surface-2); }
+.hall-color { width:14px; height:42px; border-radius:8px; flex:none; background:var(--hall-color,var(--accent)); box-shadow:0 0 0 4px color-mix(in srgb,var(--hall-color,var(--accent)) 18%,transparent); }
+.hall-card-copy { display:flex; flex:1; flex-direction:column; gap:3px; }
+.hall-card-copy small { color:var(--muted); font-size:11px; }
+.hall-open-arrow { color:var(--accent); font-size:24px; }
+.hall-picker-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.hall-picker { display:flex; align-items:center; gap:9px; min-height:42px; padding:7px 12px; border:1px solid var(--line); border-radius:10px; color:var(--muted); background:var(--surface); }
+.hall-picker .hall-color { width:8px; height:22px; box-shadow:none; }
+.hall-picker small { color:var(--faint); }
+.hall-picker.active { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.hall-table-section .card-head { gap:12px; }
+.hall-table-section .hall-color { width:8px; height:26px; box-shadow:none; }
+.table-count-form { display:flex; align-items:end; gap:12px; flex-wrap:wrap; padding:13px; margin-bottom:8px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; }
+.table-count-form .field { width:min(300px,100%); margin:0; }
+.table-count-form .btn { min-height:42px; }
+@media(max-width:640px) { .hall-management-grid { grid-template-columns:minmax(0,1fr); } .table-count-form { align-items:stretch; } .table-count-form .field,.table-count-form .btn { width:100%; } .hall-table-section .card-head { flex-wrap:wrap; } }
