@@ -38,8 +38,19 @@ jobs:
           $log = Join-Path $env:RUNNER_TEMP 'electron-builder.log'
           if (Test-Path $log) {
             Add-Content $env:GITHUB_STEP_SUMMARY '### Electron Builder output (last 100 lines)'
-            Get-Content $log -Tail 100 | Add-Content $env:GITHUB_STEP_SUMMARY
+            Get-Content $log -Tail 100 | ForEach-Object {
+              Add-Content $env:GITHUB_STEP_SUMMARY $_
+              Write-Output "::error::$($_)"
+            }
           }
+      - name: Upload installer log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HooshyarPOS-Windows-build-log
+          path: ${{ runner.temp }}/electron-builder.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload installer artifact
         if: success()
         uses: actions/upload-artifact@v4
