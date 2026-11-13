@@ -36,8 +36,15 @@ App.pay = (function () {
       const heads = Math.max(2, Math.min(20, Math.floor(Number(split.heads)||2)));
       const buckets = Array.from({length:heads}, () => 0);
       (order.lines||[]).filter(l => !l.voided).forEach(l => {
-        const idx = Math.max(0, Math.min(heads-1, Number((split.items||{})[l.id])||0));
-        buckets[idx] += (Number(l.price)||0) * (Number(l.qty)||0);
+        const assigned=(split.items||{})[l.id], qty=Math.max(0,Number(l.qty)||0), unit=Number(l.price)||0;
+        if(Array.isArray(assigned)) {
+          const whole=Math.floor(qty);
+          for(let n=0;n<whole;n++){const idx=Math.max(0,Math.min(heads-1,Number(assigned[n])||0));buckets[idx]+=unit;}
+          if(qty>whole){const idx=Math.max(0,Math.min(heads-1,Number(assigned[whole])||0));buckets[idx]+=unit*(qty-whole);}
+        } else {
+          const idx=Math.max(0,Math.min(heads-1,Number(assigned)||0));
+          buckets[idx]+=unit*qty;
+        }
       });
       const sub = U.sum(buckets) || 1, out = buckets.map((v,i) => ({ id:'s'+i, label:'نفر '+U.num(i+1), amount:Math.round(v*total/sub) }));
       out[out.length-1].amount += total - U.sum(out, x => x.amount);

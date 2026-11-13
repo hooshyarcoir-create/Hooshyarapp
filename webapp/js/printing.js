@@ -243,7 +243,8 @@ App.print = (function () {
     if (App.device.android && window.AndroidPOS && AndroidPOS.printHtml) {
       try { return parseBridgeResult(AndroidPOS.printHtml(root.innerHTML,String(mm))); } catch (e) { return {ok:false,error:e.message}; }
     }
-    setTimeout(() => { try { window.print(); } catch(e){} },120);
+    await new Promise(resolve=>setTimeout(resolve,120));
+    try { window.print(); } catch(e) { return {ok:false,error:e.message}; }
     return {ok:true,info:'پنجره چاپ باز شد'};
   }
   async function send(printer, rows, meta) {
@@ -294,6 +295,16 @@ App.print = (function () {
       }, opts.reprint?'invoice.reprint':'invoice.print', 'چاپ فاکتور '+U.num(inv.no));
     }
     return r;
+  }
+  async function printShareReceipt(inv, slotId, mm) {
+    const w=Number(mm)===58?58:80, pays=(inv.payments||[]).filter(p=>p.slotId===slotId&&!p.reversed&&p.status!=='failed');
+    if(!pays.length) return {ok:false,error:'پرداخت سهم یافت نشد'};
+    const amount=U.sum(pays,p=>Number(p.amount)||0), label=pays[0].label||('سهم '+slotId), s=App.model.D().settings;
+    const rows=[T(s.restaurantName,{align:'center',style:'title'}),T('رسید پرداخت سهم',{align:'center',style:'bold'}),RULE(),P('شماره فاکتور',U.num(inv.no)),P('سهم',label),P('تاریخ / ساعت',U.date(inv.paidAt||Date.now())+' '+U.time(inv.paidAt||Date.now())),RULE(),...pays.map(p=>P(p.label||p.method,U.money(p.amount))),RULE(),P('مبلغ پرداخت‌شده',U.money(amount),{style:'title'}),T('این رسید مربوط به فاکتور واحد شماره '+U.num(inv.no)+' است.',{align:'center',style:'small'}),T(s.footer,{align:'center',style:'small'}),SPACE(14)];
+    const html='<div class="p-center"><div class="p-title">'+esc(s.restaurantName)+'</div><b>رسید پرداخت سهم</b></div><div class="p-sep"></div><div class="p-row"><span>شماره فاکتور</span><span class="num">'+U.num(inv.no)+'</span></div><div class="p-row"><span>سهم</span><span>'+esc(label)+'</span></div><div class="p-sep"></div>'+pays.map(p=>'<div class="p-row"><span>'+esc(p.label||p.method)+'</span><span class="num">'+U.money(p.amount)+'</span></div>').join('')+'<div class="p-sep"></div><div class="p-row p-total"><span>مبلغ پرداخت‌شده</span><span class="num">'+U.money(amount)+' '+esc(s.currency)+'</span></div><div class="p-center p-small">این رسید مربوط به فاکتور واحد شماره '+U.num(inv.no)+' است.</div><div class="p-center p-small">'+esc(s.footer)+'</div>';
+    const printer=findPrinter(w,'invoice');
+    if(!printer) return browserPrint(html,w);
+    return deliver(printer,rows,{kind:'share-receipt',ref:'فاکتور '+U.num(inv.no)+' · '+label,html,entityId:inv.id,idempotencyKey:'share-'+inv.id+'-'+slotId+'-'+Date.now()});
   }
   function kitchenTickets(o, opts) {
     opts=opts||{}; const d=App.model.D(), byStation={};
@@ -395,6 +406,6 @@ App.print = (function () {
     });
   }
   return { T,P,RULE,SPACE,WIDTHS,buildRaster,invoiceRows,kitchenRows,receiptHtml,kitchenHtml,metaRows,
-           findPrinter,send,deliver,printInvoice,printKitchen,kitchenTickets,printCustomerReceipt,
+           findPrinter,send,deliver,printInvoice,printShareReceipt,printKitchen,kitchenTickets,printCustomerReceipt,
            broadcast,testPrinter,browserPrint,downloadRaster,log };
 })();
