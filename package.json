@@ -8,14 +8,17 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node tools/check.js",
-    "test": "node tools/check.js",
+    "check": "node tools/check.js && node tools/check-node-api.js",
+    "test": "node tools/check.js && node tools/check-node-api.js",
     "desktop": "electron electron/main.cjs",
-    "desktop:win": "electron-builder --win nsis --publish never",
-    "php:package": "bash tools/build-php-host.sh"
+    "desktop:win": "electron-builder --win nsis --publish never"
   },
   "engines": { "node": ">=18" },
   "license": "MIT",
+  "dependencies": {
+    "mssql": "^12.7.14",
+    "mysql2": "^3.24.6"
+  },
   "devDependencies": {
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0"

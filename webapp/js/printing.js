@@ -261,7 +261,7 @@ App.print = (function () {
       try { result=parseBridgeResult(AndroidPOS.print(JSON.stringify(printer),raster.base64)); } catch(e) { result={ok:false,error:e.message}; }
     } else if (printer.kind==='network') {
       try {
-        const r=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:printer.ip,port:printer.port||9100,data:raster.base64})});
+        const r=await fetch('/api/print',{method:'POST',headers:{'Authorization':'Bearer '+(App.sync&&App.sync.deviceToken?App.sync.deviceToken():''),'Content-Type':'application/json'},body:JSON.stringify({ip:printer.ip,port:printer.port||9100,data:raster.base64})});
         const j=await r.json();
         result=j.ok?{ok:true,info:'TCP → '+printer.ip+':'+(printer.port||9100)}:{ok:false,error:j.error||'خطای سرور چاپ'};
       } catch(e) { result={ok:false,error:'سرور چاپ در دسترس نیست (روی اندروید چاپ بومی انجام میشود): '+e.message}; }

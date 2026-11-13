@@ -14,7 +14,7 @@ App.sync=(function(){
   const setBaseVersion=v=>storage().setItem(VERSION_KEY,String(Number(v)||0));
   const pending=()=>!!storage().getItem(PENDING_KEY);
   const conflict=()=>readJson(CONFLICT_KEY,null);
-  const apiUrl=()=>{let x=String(config().apiUrl||'').trim().replace(/\/+$/,'');if(!x&&typeof location!=='undefined'&&/^https?:$/.test(location.protocol))x=new URL('/api.php',location.origin).href;if(!x)return '';return /\.php$/i.test(x)?x:x+'/api.php';};
+  const apiUrl=()=>{let x=String(config().apiUrl||'').trim().replace(/\/+$/,'');if(!x&&typeof location!=='undefined'&&/^https?:$/.test(location.protocol))x=new URL('/api/sync',location.origin).href;if(!x)return '';return /\/api\/sync$/i.test(x)?x:x+'/api/sync';};
   const token=()=>storage().getItem(TOKEN_KEY)||'';
   async function request(op,body){
     const endpoint=apiUrl();if(!endpoint)throw new Error('نشانی API در تنظیمات وارد نشده است.');
@@ -117,5 +117,5 @@ App.sync=(function(){
     'sync-use-server':()=>App.ui.confirm('دادهٔ محلی دستگاه با نسخهٔ سرور جایگزین می‌شود. ابتدا از داده‌های محلی نسخهٔ پشتیبان بگیرید. ادامه می‌دهید؟',async()=>{try{await useServer();App.ui.toast('نسخهٔ سرور دریافت شد.','ok');}catch(e){App.ui.toast(e.message,'err');}App.ui.refresh();},'حفظ نسخهٔ سرور'),
     'sync-use-device':()=>App.ui.confirm('نسخهٔ فعلی این دستگاه جایگزین کل دادهٔ سرور می‌شود. این کار را فقط پس از بررسی نسخه‌های پشتیبان انجام دهید. ادامه می‌دهید؟',async()=>{try{await useDevice();App.ui.toast('نسخهٔ دستگاه روی سرور ثبت شد.','ok');}catch(e){App.ui.toast(e.message,'err');}App.ui.refresh();},'حفظ نسخهٔ دستگاه')
   });
-  return {init,status,syncNow,testConnection,setToken,localChanged:markPending,conflict,apiUrl};
+  return {init,status,syncNow,testConnection,setToken,deviceToken:token,localChanged:markPending,conflict,apiUrl};
 })();
