@@ -296,15 +296,16 @@ App.print = (function () {
     }
     return r;
   }
-  async function printShareReceipt(inv, slotId, mm) {
-    const w=Number(mm)===58?58:80, pays=(inv.payments||[]).filter(p=>p.slotId===slotId&&!p.reversed&&p.status!=='failed');
-    if(!pays.length) return {ok:false,error:'پرداخت سهم یافت نشد'};
-    const amount=U.sum(pays,p=>Number(p.amount)||0), label=pays[0].label||('سهم '+slotId), s=App.model.D().settings;
-    const rows=[T(s.restaurantName,{align:'center',style:'title'}),T('رسید پرداخت سهم',{align:'center',style:'bold'}),RULE(),P('شماره فاکتور',U.num(inv.no)),P('سهم',label),P('تاریخ / ساعت',U.date(inv.paidAt||Date.now())+' '+U.time(inv.paidAt||Date.now())),RULE(),...pays.map(p=>P(p.label||p.method,U.money(p.amount))),RULE(),P('مبلغ پرداخت‌شده',U.money(amount),{style:'title'}),T('این رسید مربوط به فاکتور واحد شماره '+U.num(inv.no)+' است.',{align:'center',style:'small'}),T(s.footer,{align:'center',style:'small'}),SPACE(14)];
-    const html='<div class="p-center"><div class="p-title">'+esc(s.restaurantName)+'</div><b>رسید پرداخت سهم</b></div><div class="p-sep"></div><div class="p-row"><span>شماره فاکتور</span><span class="num">'+U.num(inv.no)+'</span></div><div class="p-row"><span>سهم</span><span>'+esc(label)+'</span></div><div class="p-sep"></div>'+pays.map(p=>'<div class="p-row"><span>'+esc(p.label||p.method)+'</span><span class="num">'+U.money(p.amount)+'</span></div>').join('')+'<div class="p-sep"></div><div class="p-row p-total"><span>مبلغ پرداخت‌شده</span><span class="num">'+U.money(amount)+' '+esc(s.currency)+'</span></div><div class="p-center p-small">این رسید مربوط به فاکتور واحد شماره '+U.num(inv.no)+' است.</div><div class="p-center p-small">'+esc(s.footer)+'</div>';
+  async function printItemPaymentReceipt(order, payment, mm) {
+    const w=Number(mm)===58?58:80, s=App.model.D().settings, items=payment.itemAllocations||[];
+    const rows=[T(s.restaurantName,{align:'center',style:'title'}),T('رسید پرداخت اقلام',{align:'center',style:'bold'}),RULE(),
+      P('شماره فاکتور',U.num(order.no)),P('روش پرداخت',payment.label||payment.method),P('تاریخ / ساعت',U.date(payment.at)+' '+U.time(payment.at)),RULE()];
+    items.forEach(x=>rows.push(P(U.num(x.qty)+' × '+x.name,U.money((Number(x.unitPrice)||0)*(Number(x.qty)||0)))));
+    rows.push(RULE(),P('مبلغ این پرداخت',U.money(payment.amount),{style:'title'}),P('مانده فاکتور',U.money(App.model.remaining(order))),T('این رسید مربوط به بخشی از فاکتور واحد شماره '+U.num(order.no)+' است.',{align:'center',style:'small'}),T(s.footer,{align:'center',style:'small'}),SPACE(14));
+    const html='<div class="p-center"><div class="p-title">'+esc(s.restaurantName)+'</div><b>رسید پرداخت اقلام</b></div><div class="p-sep"></div><div class="p-row"><span>شماره فاکتور</span><span class="num">'+U.num(order.no)+'</span></div><div class="p-row"><span>روش پرداخت</span><span>'+esc(payment.label||payment.method)+'</span></div><div class="p-sep"></div>'+items.map(x=>'<div class="p-row"><span>'+U.num(x.qty)+' × '+esc(x.name)+'</span><span class="num">'+U.money((Number(x.unitPrice)||0)*(Number(x.qty)||0))+'</span></div>').join('')+'<div class="p-sep"></div><div class="p-row p-total"><span>مبلغ این پرداخت</span><span class="num">'+U.money(payment.amount)+' '+esc(s.currency)+'</span></div><div class="p-row"><span>مانده فاکتور</span><span class="num">'+U.money(App.model.remaining(order))+'</span></div><div class="p-center p-small">این رسید مربوط به بخشی از فاکتور واحد شماره '+U.num(order.no)+' است.</div><div class="p-center p-small">'+esc(s.footer)+'</div>';
     const printer=findPrinter(w,'invoice');
-    if(!printer) return browserPrint(html,w);
-    return deliver(printer,rows,{kind:'share-receipt',ref:'فاکتور '+U.num(inv.no)+' · '+label,html,entityId:inv.id,idempotencyKey:'share-'+inv.id+'-'+slotId+'-'+Date.now()});
+    if(!printer)return browserPrint(html,w);
+    return deliver(printer,rows,{kind:'item-payment-receipt',ref:'فاکتور '+U.num(order.no)+' · '+(payment.label||payment.id),html,entityId:order.id,idempotencyKey:'items-'+payment.id});
   }
   function kitchenTickets(o, opts) {
     opts=opts||{}; const d=App.model.D(), byStation={};
@@ -406,6 +407,6 @@ App.print = (function () {
     });
   }
   return { T,P,RULE,SPACE,WIDTHS,buildRaster,invoiceRows,kitchenRows,receiptHtml,kitchenHtml,metaRows,
-           findPrinter,send,deliver,printInvoice,printShareReceipt,printKitchen,kitchenTickets,printCustomerReceipt,
+           findPrinter,send,deliver,printInvoice,printItemPaymentReceipt,printKitchen,kitchenTickets,printCustomerReceipt,
            broadcast,testPrinter,browserPrint,downloadRaster,log };
 })();

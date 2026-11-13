@@ -1,6 +1,6 @@
 /* ============================================================================
  * Hooshyar POS v2 — payment service
- * Mixed payments, credit limits, PSP/card-reader intents, «دنگی» split.
+ * Mixed payments, credit limits, PSP/card-reader intents, item-by-item settlement.
  * Every transaction is tied to an invoice number and records its actor.
  * ==========================================================================*/
 'use strict';
@@ -15,45 +15,21 @@ App.pay = (function () {
     { id:'other',  label:'سایر',      icon:'tag',    desc:'کوپن، انتقال، کیف پول' }
   ];
   const methodLabel = m => (METHODS.find(x => x.id===m) || { label:m || '—' }).label;
-  const SPLIT_MODES = { none:'بدون تقسیم', equal:'دنگی مساوی', custom:'دنگی دلخواه', items:'دنگی بر اساس اقلام' };
-
-  function shares(order, split) {
-    split = split || order.split || { mode:'none' };
-    const total = App.model.totals(order).total, mode = split.mode || 'none';
-    if (mode === 'equal') {
-      const n = Math.max(2, Math.min(30, Math.floor(Number(split.heads)||2)));
-      const base = Math.floor(total/n); let rem = total - base*n;
-      return Array.from({length:n}, (_,i) => ({ id:'s'+i, label:'نفر '+U.num(i+1), amount:base + (rem-- > 0 ? 1 : 0) }));
-    }
-    if (mode === 'custom') {
-      const vals = (split.custom||[]).map(Number).filter(v => v >= 0);
-      if (!vals.length) return [{ id:'s0', label:'کل فاکتور', amount:total }];
-      const out = vals.map((v,i) => ({ id:'s'+i, label:'نفر '+U.num(i+1), amount:Math.round(v) }));
-      out[out.length-1].amount += total - U.sum(out, x => x.amount);
-      return out;
-    }
-    if (mode === 'items') {
-      const heads = Math.max(2, Math.min(20, Math.floor(Number(split.heads)||2)));
-      const buckets = Array.from({length:heads}, () => 0);
-      (order.lines||[]).filter(l => !l.voided).forEach(l => {
-        const assigned=(split.items||{})[l.id], qty=Math.max(0,Number(l.qty)||0), unit=Number(l.price)||0;
-        if(Array.isArray(assigned)) {
-          const whole=Math.floor(qty);
-          for(let n=0;n<whole;n++){const idx=Math.max(0,Math.min(heads-1,Number(assigned[n])||0));buckets[idx]+=unit;}
-          if(qty>whole){const idx=Math.max(0,Math.min(heads-1,Number(assigned[whole])||0));buckets[idx]+=unit*(qty-whole);}
-        } else {
-          const idx=Math.max(0,Math.min(heads-1,Number(assigned)||0));
-          buckets[idx]+=unit*qty;
-        }
-      });
-      const sub = U.sum(buckets) || 1, out = buckets.map((v,i) => ({ id:'s'+i, label:'نفر '+U.num(i+1), amount:Math.round(v*total/sub) }));
-      out[out.length-1].amount += total - U.sum(out, x => x.amount);
-      return out;
-    }
-    return [{ id:'single', label:'کل فاکتور', amount:total }];
+  function remainingItems(order) {
+    const paidByLine={};
+    (order.payments||[]).filter(p=>!p.reversed&&p.status!=='failed').forEach(p=>(p.itemAllocations||[]).forEach(x=>{paidByLine[x.lineId]=(paidByLine[x.lineId]||0)+(Number(x.qty)||0);}));
+    return (order.lines||[]).filter(l=>!l.voided).map(line=>({line,remaining:Math.max(0,(Number(line.qty)||0)-(paidByLine[line.id]||0))})).filter(x=>x.remaining>0);
   }
-  function slotPaid(o, slotId) { return U.sum((o.payments||[]).filter(p => !p.reversed && p.status !== 'failed' && p.slotId === slotId), p => Number(p.amount)||0); }
-  function setSplit(o, patch) { App.store.commit(() => { o.split = Object.assign({mode:'none',heads:2,custom:[],items:{}}, o.split, patch); }, 'order.edit', 'تغییر نحوه تقسیم دنگی'); }
+  function itemBatch(order, selected) {
+    const items=remainingItems(order), chosen=items.map(({line,remaining})=>({line,qty:Math.max(0,Math.min(remaining,Number((selected||{})[line.id])||0))})).filter(x=>x.qty>0);
+    if(!chosen.length)return {ok:false,error:'برای تسویه، تعداد یک یا چند قلم را انتخاب کنید.'};
+    const remainingGross=items.reduce((a,x)=>a+(Number(x.line.price)||0)*x.remaining,0);
+    const selectedGross=chosen.reduce((a,x)=>a+(Number(x.line.price)||0)*x.qty,0), remaining=App.model.remaining(order);
+    const finalBatch=chosen.reduce((a,x)=>a+x.qty,0)>=items.reduce((a,x)=>a+x.remaining,0);
+    const amount=finalBatch?remaining:Math.round(remaining*(remainingGross?selectedGross/remainingGross:0));
+    if(amount<=0)return {ok:false,error:'مبلغ این انتخاب صفر است؛ اقلام باقی‌مانده را بررسی کنید.'};
+    return {ok:true,amount,finalBatch,itemAllocations:chosen.map(({line,qty})=>({lineId:line.id,name:line.name,qty,unitPrice:Number(line.price)||0}))};
+  }
 
   function addPayment(o, p) {
     const amount = Math.round(Number(p.amount)||0);
@@ -69,7 +45,7 @@ App.pay = (function () {
       label:p.label || methodLabel(p.method), ref:p.ref||'', trace:p.trace||'', pan:p.pan||'',
       pspId:p.pspId||'', pspName:p.pspName||'', terminalId:p.terminalId||'', merchantId:p.merchantId||'',
       status:p.status || 'success', customerId:p.customerId||'', customerName:p.customerName||'',
-      note:p.note||'', cashReceived:Number(p.cashReceived)||0, invoiceNo:o.no,
+      itemAllocations:U.clone(p.itemAllocations||[]), note:p.note||'', cashReceived:Number(p.cashReceived)||0, invoiceNo:o.no,
       at:Date.now(), by:a.id, byName:a.name, reversed:false
     };
     App.store.commit(() => {
@@ -150,6 +126,6 @@ App.pay = (function () {
     App.store.commit(d => { d.customers.push(c); }, 'club.manage', 'ثبت مشتری «'+c.firstName+' '+c.lastName+'»');
     return c;
   }
-  return { METHODS, methodLabel, SPLIT_MODES, shares, slotPaid, setSplit, addPayment, removePayment,
+  return { METHODS, methodLabel, remainingItems, itemBatch, addPayment, removePayment,
            reversePayment, canSettle, settle, pspPay, enabledPsps, customers, addCustomer, normalize };
 })();
