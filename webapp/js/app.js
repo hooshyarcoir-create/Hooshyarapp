@@ -9,7 +9,7 @@ App.formHandlers = App.formHandlers || {};
 App.ui = (function () {
   const U = App.util;
   const state = {
-    screen:'tables', hallId:null, groupId:'all', orderId:null,
+    screen:'console', hallId:null, groupId:'all', orderId:null, loginStep:1, loginUserId:null, baseTab:'products',
     invTab:'current', invSel:null, invWidth:null, invPrinterId:null,
     payOrderId:null, slotDraft:{}, menuTab:'groups', settingsTab:'general',
     reportRange:'today', productSearch:'', adminSearch:''
@@ -18,32 +18,30 @@ App.ui = (function () {
   let genericSubmit = null;
 
   const NAV = [
-    { screen:'tables',   label:'میزها و سالن',  icon:'grid',     perm:'tables.view' },
-    { screen:'order',    label:'سفارش جاری',    icon:'note',     perm:'order.edit' },
-    { screen:'invoice',  label:'صورتحساب',      icon:'receipt',  perm:'invoice.view' },
-    { screen:'payment',  label:'تسویه',         icon:'wallet',   perm:'payment.settle' },
-    { screen:'menu',     label:'منو و کالاها',  icon:'book',     perm:'menu.view' },
-    { screen:'reports',  label:'گزارشات',       icon:'chart',    perm:'reports.view' },
-    { screen:'settings', label:'تنظیمات',       icon:'settings', perm:null }
+    { screen:'console', label:'کنسول فروش', icon:'grid', perm:'tables.view' },
+    { screen:'dashboard', label:'پیشخوان مدیریتی', icon:'chart', perm:'dashboard.view' },
+    { screen:'invoices', label:'مدیریت فاکتورها', icon:'receipt', perm:'invoice.view' },
+    { screen:'reports', label:'گزارشات مدیریتی', icon:'chart', perm:'reports.view' },
+    { screen:'base', label:'اطلاعات پایه', icon:'book', perm:'menu.view' },
+    { screen:'settings', label:'تنظیمات سامانه', icon:'settings', perm:'settings.manage' }
   ];
   const TITLES = {
-    tables:['میزها و سالن','وضعیت لحظهای میزها و ثبت سفارش'],
-    order:['سفارش','انتخاب کالا، توضیحات و ارسال به آشپزخانه'],
-    invoice:['صورتحساب و چاپ','چاپ فاکتور روی کاغذ ۶ و ۸ سانتی'],
-    payment:['تسویه فاکتور','نقدی، اعتباری، کارتخوان و دنگی'],
-    menu:['منو و کالاها','گروهبندی، قیمت و خط چاپ'],
-    reports:['گزارشات','فروش، پرداختها و کالاهای پرفروش'],
-    settings:['تنظیمات','پیکربندی سامانه و سطوح دسترسی']
+    console:['کنسول فروش','ثبت سفارش، مدیریت سالن، پرداخت و چاپ'],
+    invoices:['مدیریت فاکتورها','جاری، تسویه‌شده، ویرایش‌شده و حذف‌شده'],
+    reports:['گزارشات مدیریتی','تحلیل فروش، پرداخت، عملکرد و موجودی'],
+    base:['اطلاعات پایه','مدیریت منو، سالن، موجودی، کاربران و مشتریان'],
+    settings:['تنظیمات سامانه','پیکربندی رستوران، مالیات، چاپ و پشتیبان‌گیری'],
+    dashboard:['پیشخوان مدیریت','شاخص‌های لحظه‌ای فروش، عملکرد و هشدارها']
   };
 
   function navItems() {
     return NAV.filter(n => {
-      if (n.screen === 'order' && !state.orderId) return false;
-      if (n.screen === 'settings') return App.auth.can('settings.manage') || App.auth.can('tables.manage') || App.auth.can('printers.manage') || App.auth.can('users.manage') || App.auth.can('backup.manage') || App.auth.can('menu.manage');
+      if (n.screen === 'base') return ['menu.manage','tables.manage','users.manage','customers.manage','stock.manage','printers.manage','roles.manage'].some(p=>App.auth.can(p));
+      if (n.screen === 'settings') return ['settings.manage','backup.manage','printers.manage','psp.manage'].some(p=>App.auth.can(p));
       return !n.perm || App.auth.can(n.perm);
     });
   }
-  function defaultScreen() { const n = navItems()[0]; return n ? n.screen : 'tables'; }
+  function defaultScreen() { const n = navItems()[0]; return n ? n.screen : 'console'; }
 
   /* -------------------------------- rendering -------------------------------- */
   function render(preserveScroll) {
@@ -75,16 +73,16 @@ App.ui = (function () {
     document.getElementById('page-sub').textContent = t[1];
 
     document.getElementById('side-nav').innerHTML = items.map(n => {
-      const badge = (n.screen === 'payment' || n.screen === 'invoice') ? App.model.openOrders().length : 0;
+      const badge = n.screen === 'invoices' ? App.model.openOrders().length : 0;
       return '<button class="nav-item ' + (state.screen===n.screen?'active':'') + '" data-action="nav" data-screen="' + n.screen + '">' +
         U.icon(n.icon) + '<span>' + n.label + '</span>' + (badge ? '<span class="badge accent">' + U.num(badge) + '</span>' : '') + '</button>';
     }).join('');
-    const short = { tables:'میزها', invoice:'فاکتور', payment:'تسویه', menu:'منو', settings:'تنظیمات', reports:'گزارش', order:'سفارش' };
-    const bottom = ['tables','invoice','payment','menu','settings'].map(s => items.find(n => n.screen===s)).filter(Boolean).slice(0,5);
+    const short = { console:'فروش', invoices:'فاکتورها', reports:'گزارش', base:'اطلاعات پایه', settings:'تنظیمات' };
+    const bottom = ['console','invoices','reports','base','settings'].map(s => items.find(n => n.screen===s)).filter(Boolean).slice(0,5);
     document.getElementById('bottom-nav').innerHTML = bottom.map(n =>
       '<button class="' + (state.screen===n.screen?'active':'') + '" data-action="nav" data-screen="' + n.screen + '">' + U.icon(n.icon) + '<span>' + short[n.screen] + '</span></button>').join('');
 
-    const fn = App.views[state.screen] || App.views.tables;
+    const fn = App.views[state.screen] || App.views.console;
     try { view.innerHTML = fn(); }
     catch (e) { console.error('render error', e); view.innerHTML = '<div class="card"><div class="empty">خطا در نمایش صفحه: ' + U.esc(e.message) + '</div></div>'; }
     view.scrollTop = preserveScroll ? scroll : 0;
@@ -251,13 +249,14 @@ document.addEventListener('submit', (e) => {
   const kind = f.dataset.form;
   if (kind === 'login') {
     const v = App.ui.collect(f);
-    if (App.auth.login(v.username, v.password, v.remember)) {
+    if (App.auth.login(v.userId, v.password, v.remember)) {
+      App.ui.state.loginStep = 1; App.ui.state.loginUserId = null;
       App.ui.render();
       const u = App.auth.current();
       App.ui.toast('خوش آمدید، ' + (u ? u.name : '') + ' 👋', 'ok');
     } else {
       const box = document.getElementById('login-error');
-      if (box) box.innerHTML = '<div class="login-error">نام کاربری یا رمز عبور اشتباه است.</div>';
+      if (box) box.innerHTML = '<div class="login-error">رمز عبور واردشده صحیح نیست.</div>';
     }
     return;
   }
@@ -286,6 +285,7 @@ document.addEventListener('change', (e) => {
 });
 
 Object.assign(App.actions, {
+  'nav': el => App.ui.go(el.dataset.screen),
   'modal-close': () => App.ui.close(),
   'logout': () => App.ui.confirm('از حساب کاربری خارج میشوید؟ اطلاعات ذخیره باقی میماند.', () => { App.auth.logout(); App.ui.render(); }),
   'toggle-menu': () => { const sb = document.querySelector('.sidebar'); if (sb) sb.classList.toggle('open'); },

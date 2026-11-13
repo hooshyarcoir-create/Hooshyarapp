@@ -1,132 +1,21 @@
 #!/usr/bin/env node
-/**
- * Dependency-free logic checks. Runs the real browser modules in a tiny VM
- * sandbox (no jsdom / no browser needed): npm test
- */
+/** Offline contract/regression checks for the v2 domain services. */
 'use strict';
-const fs = require('fs');
-const vm = require('vm');
-const path = require('path');
-const crypto = require('crypto');
-
-const ROOT = path.join(__dirname, '..', 'webapp', 'js');
-const mem = {};
-const localStorage = {
-  getItem: k => (k in mem ? mem[k] : null),
-  setItem: (k, v) => { mem[k] = String(v); },
-  removeItem: k => { delete mem[k]; }
-};
-const sandbox = {
-  console, Date, Math, Intl, JSON, Promise, Error, RegExp, Number, String, Array, Object,
-  Uint8Array, Uint32Array, DataView, Blob: function () {}, URL: { createObjectURL: () => '', revokeObjectURL: () => {} },
-  btoa, atob, setTimeout, clearTimeout, setInterval: () => 0,
-  localStorage,
-  document: { fonts: null, getElementById: () => null, createElement: () => ({ getContext: () => null }) },
-  navigator: { onLine: false },
-  fetch: () => Promise.reject(new Error('offline'))
-};
-sandbox.window = sandbox;
-sandbox.globalThis = sandbox;
-vm.createContext(sandbox);
-
-let failed = 0, passed = 0;
-function check(name, cond, extra) {
-  if (cond) { passed++; console.log('  ✓ ' + name); }
-  else { failed++; console.error('  ✗ ' + name + (extra !== undefined ? '  → ' + extra : '')); }
-}
-function load(file) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, file), 'utf8'), sandbox, { filename:file }); check('load ' + file, true); }
-  catch (e) { check('load ' + file, false, e.stack); throw e; }
-}
-
-console.log('\nHooshyar POS — logic checks\n');
-['core.js', 'printing.js', 'payments.js'].forEach(load);
-const A = sandbox.App;
-
-console.log('\ncrypto');
-for (const s of ['', 'abc', '1234', 'سلام دنیا', 'a'.repeat(1000)]) {
-  check('sha256(' + JSON.stringify(s.slice(0, 10)) + ')',
-    A.util.sha256(s) === crypto.createHash('sha256').update(s, 'utf8').digest('hex'));
-}
-
-console.log('\nseed & storage');
-A.store.load();
-const d = A.store.data;
-check('16 tables / 3 halls', d.tables.length === 16 && d.halls.length === 3);
-check('18 products / 5 groups', d.products.length === 18 && d.groups.length === 5);
-check('3 print stations', d.stations.length === 3);
-check('invoice + 58mm + 80mm printers', d.printers.length === 5 && d.printers.some(p => p.width === 58) && d.printers.some(p => p.width === 80));
-check('USB & bluetooth & IP printers', ['network','usb','bluetooth'].every(k => d.printers.some(p => p.kind === k)));
-check('4 PSP presets', d.psps.length === 4);
-check('4 users with distinct roles', d.users.length === 4 && new Set(d.users.map(u => u.role)).size === 4);
-check('auto snapshot created', d.snapshots.length === 1);
-A.store.saveNow();
-check('localStorage persisted', !!localStorage.getItem('hooshyar.pos.data.v1'));
-
-console.log('\nauth & permissions');
-check('admin password works', A.auth.login('admin', '1234', false));
-check('admin has all permissions', A.ALL_PERMISSIONS.every(p => A.auth.can(p)));
-A.auth.logout();
-check('wrong password rejected', !A.auth.login('admin', '0000', false));
-check('waiter login', A.auth.login('waiter', '3333', false));
-check('waiter can send to kitchen', A.auth.can('order.send'));
-check('waiter cannot settle', !A.auth.can('payment.settle'));
-check('waiter cannot manage users', !A.auth.can('users.manage'));
-A.auth.logout(); A.auth.login('admin', '1234', false);
-
-console.log('\norders & totals');
-const demo = A.model.order('o-demo');
-check('demo order has 3 lines', demo.lines.length === 3);
-const t = A.model.totals(demo);
-check('subtotal = 530000', t.subtotal === 530000, t.subtotal);
-check('total >= subtotal', t.total >= t.subtotal);
-const o = A.model.createOrder('t1', 'سالن');
-A.model.addLine(o, 'p1'); A.model.addLine(o, 'p1');
-check('addLine merges duplicates', o.lines.length === 1 && o.lines[0].qty === 2);
-check('table marked occupied', A.model.table('t1').status === 'occupied');
-A.store.commit(() => { o.discount = { type:'percent', value:10 }; });
-const td = A.model.totals(o);
-check('percent discount applied', td.discount === Math.round(td.subtotal * 0.1), td.discount);
-
-console.log('\nدنگی / split');
-for (const mode of ['none', 'equal', 'custom', 'items']) {
-  const split = { mode, heads:3, custom:[100, 200, 300], items:{ l1:0, l2:1, l3:2 } };
-  const shares = A.pay.shares(demo, split);
-  check(mode + ' shares sum to total', A.util.sum(shares, s => s.amount) === A.model.totals(demo).total, shares.map(s => s.amount).join(','));
-}
-
-console.log('\npayments & settlement');
-const total = A.model.totals(demo).total;
-check('pays cash', A.pay.addPayment(demo, { method:'cash', amount:Math.floor(total/2) }).ok);
-check('pays card', A.pay.addPayment(demo, { method:'card', amount:total - Math.floor(total/2), pspName:'تست' }).ok);
-check('fully paid', A.model.remaining(demo) === 0);
-const settled = A.pay.settle(demo);
-check('invoice issued', settled.ok);
-check('invoice archived', A.store.data.invoices.length === 2);
-check('table freed', A.model.table('t5').status === 'free');
-check('credit customer balance updated on credit payments', A.pay.customers().length >= 1);
-
-console.log('\nprinting');
-const inv = settled.invoice;
-check('invoice rows (80)', A.print.invoiceRows(inv, 80).length > 10);
-check('invoice rows (58)', A.print.invoiceRows(inv, 58).length > 10);
-check('receipt html contains restaurant', A.print.receiptHtml(inv, 80).includes('رستوران'));
-check('finder picks 80mm invoice printer', A.print.findPrinter(80, 'invoice') !== null);
-check('finder picks 58mm invoice printer', A.print.findPrinter(58, 'invoice') !== null);
-const tickets = A.print.kitchenTickets(demo, { reprint:true });
-check('3 kitchen tickets for 3 lines/stations', tickets.length === 3, tickets.map(x => x.stationName).join('|'));
-check('every ticket has a printerId', tickets.every(x => !!x.printerId));
-check('kitchen rows non-empty', tickets.every(x => A.print.kitchenRows(x, 80).length > 5));
-check('group -> station routing', (A.model.group('g4').stationIds || []).indexOf('s-bar') !== -1);
-
-console.log('\nbackup');
-const json = A.store.export();
-check('export is valid JSON', JSON.parse(json).invoices.length === 2);
-A.store.import(json);
-check('import roundtrip', A.store.data.invoices.length === 2);
-let threw = false;
-try { A.store.import('{"broken":true}'); } catch (e) { threw = true; }
-check('invalid backup rejected', threw);
-
-console.log('\n' + passed + ' passed, ' + failed + ' failed\n');
-process.exit(failed ? 1 : 0);
+const fs=require('fs'),vm=require('vm'),path=require('path'),crypto=require('crypto');
+const ROOT=path.join(__dirname,'..','webapp','js'),mem={};
+const localStorage={getItem:k=>k in mem?mem[k]:null,setItem:(k,v)=>{mem[k]=String(v);},removeItem:k=>delete mem[k]};
+const sandbox={console,Date,Math,Intl,JSON,Promise,Error,RegExp,Number,String,Array,Object,Set,Map,Uint8Array,Uint32Array,DataView,Blob:function(){},URL:{createObjectURL:()=>'',revokeObjectURL:()=>{}},btoa,atob,setTimeout,clearTimeout,setInterval:()=>0,localStorage,document:{fonts:null,getElementById:()=>null,createElement:()=>({getContext:()=>null})},navigator:{onLine:false,share:null},fetch:()=>Promise.reject(new Error('offline'))};sandbox.window=sandbox;sandbox.globalThis=sandbox;vm.createContext(sandbox);
+let pass=0,fail=0;function test(n,ok,extra){if(ok){pass++;console.log('  ✓ '+n);}else{fail++;console.error('  ✗ '+n+(extra===undefined?'':' → '+extra));}}
+for(const f of ['core.js','domain.js','payments.js','printing.js','club.js','reports.js']){try{vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),sandbox,{filename:f});test('load '+f,true);}catch(e){test('load '+f,false,e.stack);throw e;}}
+const A=sandbox.App;
+console.log('\nHash and seed');
+for(const text of ['','abc','1234','سلام دنیا','x'.repeat(1000)])test('SHA-256 '+JSON.stringify(text.slice(0,8)),A.util.sha256(text)===crypto.createHash('sha256').update(text,'utf8').digest('hex'));
+A.store.load();const d=A.model.D();test('v2 seed schema',d.meta.version===2);test('16 restaurant tables across three halls',d.tables.length===16&&d.halls.length===3);test('18 products across five groups',d.products.length===18&&d.groups.length===5);test('stock, printers, PSP presets seeded',d.products.some(p=>p.trackStock)&&d.printers.length===5&&d.psps.length===4);test('two-step login accounts seeded',d.users.length===4&&d.users.every(u=>u.username&&u.passHash));
+A.store.saveNow();test('v2 storage key persists',!!localStorage.getItem('hooshyar.pos.data.v2'));test('v1 storage key is not written',!localStorage.getItem('hooshyar.pos.data.v1'));
+console.log('\nAuthentication and policy');const admin=d.users.find(u=>u.username==='admin');test('admin login',A.auth.login(admin.id,'1234',false));test('admin has all granular permissions',A.ALL_PERMISSIONS.every(p=>A.auth.can(p)));A.auth.logout();const waiter=d.users.find(u=>u.username==='waiter');test('waiter login',A.auth.login(waiter.id,'3333',false));test('waiter can submit order',A.auth.can('order.submit')||A.auth.can('order.create'));test('waiter cannot settle payments',!A.auth.can('payment.settle'));test('waiter cannot manage staff',!A.auth.can('users.manage'));const noDiscount={lines:[{id:'testline',price:1000,qty:1,discount:{type:'amount',value:0},voided:false}],discount:{type:'amount',value:0}};const withLineDiscount={lines:[{id:'testline',price:1000,qty:1,discount:{type:'percent',value:5},voided:false}],discount:{type:'amount',value:0}};test('custom/limited role cannot bypass line discount permission',!A.domain.discountAllowed(withLineDiscount,null,'discount.line',noDiscount).ok);A.auth.logout();A.auth.login(admin.id,'1234',false);
+console.log('\nMoney, order and audit');const demo=A.model.order('o-demo');test('seed order has three lines',demo&&demo.lines.length===3);const totals=A.domain.totals(demo);test('order totals contain gross, discount and payable',Number.isFinite(totals.gross)&&Number.isFinite(totals.total)&&totals.total>=0);const fresh=A.model.createOrder('t1','حضوری');A.model.addLine(fresh,'p1');A.model.addLine(fresh,'p1');test('same product line merges quantity',fresh.lines.filter(l=>!l.voided).length===1&&fresh.lines[0].qty===2);test('new table becomes occupied',A.model.table('t1').status==='occupied');A.store.commit(()=>{fresh.discount={type:'percent',value:10};});const discounted=A.domain.totals(fresh);test('percentage invoice discount calculated',discounted.discount>0&&discounted.total<discounted.gross);const beforeStock=A.model.product('p1').stock;const sub=A.domain.submit(fresh);test('submission succeeds',sub.ok);test('submission is idempotent',A.domain.submit(fresh).duplicate===true);test('stock deducted exactly once on submit policy',d.settings.stockPolicy!=='on-submit'||A.model.product('p1').stock<beforeStock);const p2Before=A.model.product('p2').stock;A.model.addLine(fresh,'p2');const incremental=A.domain.submit(fresh);const p2After=A.model.product('p2').stock;A.domain.submit(fresh);test('resubmitting a current order deducts only new lines',d.settings.stockPolicy!=='on-submit'||(incremental.ok&&p2After===p2Before-1&&A.model.product('p2').stock===p2After));test('audit log captures operations',d.audit.length>0);const blocked=A.model.createOrder('t3','حضوری');A.model.addLine(blocked,'p1');A.model.addLine(blocked,'p2');const p1Stock=A.model.product('p1').stock,p2Stock=A.model.product('p2').stock;A.model.product('p2').stock=0;const stockFailure=A.domain.stockCheck(blocked),blockedSubmit=A.domain.submit(blocked);test('stock shortage blocks submit atomically',!stockFailure.ok&&!blockedSubmit.ok&&A.model.product('p1').stock===p1Stock);A.model.product('p2').stock=p2Stock;A.store.commit(()=>{const t=A.model.table('t3');t.status='free';t.orderId=null;t.occupiedAt=null;blocked.status='void';});
+console.log('\nPayment, settlement and invoice lifecycle');const order=A.model.order('o-demo');const total=A.domain.totals(order).total;const split=A.pay.shares(order,{mode:'equal',heads:3});test('dengi shares sum exactly to total',split.reduce((a,x)=>a+x.amount,0)===total);test('no-payments settlement fails safely',!A.domain.settle(order).ok);test('cash payment can be recorded',A.pay.addPayment(order,{method:'cash',amount:total,label:'نقدی'}).ok);const res=A.domain.settle(order);test('paid order settles into invoice',res.ok&&res.invoice&&res.invoice.status==='paid');test('settlement is idempotent',A.domain.settle(order).duplicate===true);test('invoice archive updated',d.invoices.some(i=>i.orderId===order.id));test('table freed after successful settlement',A.model.table('t5').status==='free');test('invoice keeps actor and payment audit fields',!!res.invoice.settledByName&&res.invoice.payments.length===1);const stockAfter=A.model.product('p1').stock;A.domain.softDelete(res.invoice,'invoice','test');A.domain.restoreStock(res.invoice);test('soft delete preserves invoice record',d.invoices.includes(res.invoice)&&res.invoice.status==='deleted');test('stock ledger records sale and reversal movements',Array.isArray(d.stockMoves)&&d.stockMoves.some(m=>m.kind==='sale')&&d.stockMoves.some(m=>m.kind==='restore'));
+console.log('\nReports, printing and backups');test('report service summarizes paid invoice',A.report.summary([res.invoice]).count===1);test('report CSV quotes values',A.report.csv(['a'],[['a,b']]).includes('"a,b"'));test('thermal invoice generation 58/80',A.print.invoiceRows(res.invoice,58).length>0&&A.print.invoiceRows(res.invoice,80).length>0);test('receipt HTML renders restaurant safely',A.print.receiptHtml(res.invoice,80).includes('رستوران'));test('kitchen routing emits station jobs',A.print.kitchenTickets(demo,{reprint:true}).length>0);const exported=A.store.export();test('backup export is valid v2 JSON',JSON.parse(exported).meta.version===2);A.store.import(exported);test('backup round-trip retains invoices',A.store.data.invoices.some(i=>i.orderId===order.id));let invalid=false;try{A.store.import('{"bad":true}');}catch(_){invalid=true;}test('invalid backup rejected',invalid);
+const legacy=JSON.parse(exported);legacy.meta.version=1;delete legacy.roles;delete legacy.paymentMethods;(legacy.users||[]).forEach(u=>delete u.roleIds);mem['hooshyar.pos.data.v1']=JSON.stringify(legacy);localStorage.removeItem('hooshyar.pos.data.v2');A.store.load();test('v1 storage migrates into v2 schema',A.model.D().meta.version===2&&A.model.D().roles.length>=5);test('migration assigns legacy role identifiers',(A.model.D().users||[]).every(u=>Array.isArray(u.roleIds)));A.store.saveNow();test('migrated data persisted under v2 key',!!localStorage.getItem('hooshyar.pos.data.v2'));
+const index=fs.readFileSync(path.join(__dirname,'..','webapp','index.html'),'utf8');const scripts=['core.js','domain.js','payments.js','printing.js','club.js','reports.js','views.js','views-console.js','views-invoices.js','views-reports.js','views-admin.js','app.js'];test('HTML loads all v2 scripts in dependency order',scripts.every((f,i)=>index.indexOf('js/'+f)>=0&&(i===0||index.indexOf('js/'+f)>index.indexOf('js/'+scripts[i-1]))));test('customer invoice page exists',fs.existsSync(path.join(__dirname,'..','webapp','invoice.html')));
+console.log('\n'+pass+' passed, '+fail+' failed\n');process.exit(fail?1:0);

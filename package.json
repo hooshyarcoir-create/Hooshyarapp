@@ -1,6 +1,6 @@
 {
   "name": "hooshyar-pos",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "سامانه سفارشگیری و صدور فاکتور رستوران هوشیار - پیشنمایش تحت وب و میزبان اندروید",
   "scripts": {

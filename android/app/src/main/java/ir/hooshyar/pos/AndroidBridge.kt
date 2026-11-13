@@ -1,6 +1,7 @@
 package ir.hooshyar.pos
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import android.util.Log
@@ -71,6 +72,35 @@ class AndroidBridge(private val activity: MainActivity) {
     @JavascriptInterface
     fun keepScreenOn(enabled: Boolean) {
         activity.runOnUiThread { activity.setKeepScreenOn(enabled) }
+    }
+
+    /** Opens the SMS composer with the customer number and prepared message. */
+    @JavascriptInterface
+    fun sendSms(phone: String, message: String): Boolean {
+        return try {
+            val uri = Uri.fromParts("smsto", phone, null)
+            val intent = Intent(Intent.ACTION_SENDTO, uri).putExtra("sms_body", message)
+            activity.runOnUiThread { activity.startActivity(intent) }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "sendSms failed", e)
+            false
+        }
+    }
+
+    /** Opens Android's chooser; never silently sends customer data. */
+    @JavascriptInterface
+    fun shareText(title: String, text: String): Boolean {
+        return try {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+            activity.runOnUiThread {
+                activity.startActivity(Intent.createChooser(send, title.ifBlank { "اشتراک‌گذاری" }))
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "shareText failed", e)
+            false
+        }
     }
 
     @JavascriptInterface
