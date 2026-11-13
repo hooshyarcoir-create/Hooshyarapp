@@ -35,7 +35,7 @@ App.inputs = App.inputs || {};
     const si = o ? V.statusBadge(o.status) : (t.status==='reserved' ? '<span class="badge warn">رزرو</span>' : '<span class="badge ok">آزاد</span>');
     const occ=t.occupiedAt?U.duration(t.occupiedAt):'';
     const paid=o?App.model.paid(o):0, remaining=o?App.model.remaining(o):0;
-    return '<button class="table-card mini pos-table-card '+(active?'selected':'')+' '+(o?'is-occupied':'is-free')+'" data-action="c-table" data-id="'+t.id+'">'+
+    return '<button class="table-card mini '+(active?'selected':'')+' '+(o?'is-occupied':'is-free')+'" data-action="c-table" data-id="'+t.id+'">'+
       '<div class="t-top"><span class="t-name">'+U.esc(t.name)+'</span><span class="t-status">'+si+'</span></div>'+
       '<div class="t-meta">'+(o?'<span class="t-total num">'+M(App.model.totals(o).total)+'</span><span>فاکتور '+N(o.no)+'</span>':'<span>آزاد</span>')+
       (paid>0?'<span class="'+(remaining>0?'warn':'ok')+'">پرداخت '+M(paid)+' · مانده '+M(remaining)+'</span>':'')+
@@ -123,45 +123,43 @@ App.inputs = App.inputs || {};
     const q=(s.cSearch||'').trim();
     const products=d.products.filter(p=>(!gid||p.groupId===gid)&&(!q||p.name.indexOf(q)!==-1||(p.code||'').indexOf(q)!==-1));
     const occ=d.tables.filter(t=>t.status==='occupied').length;
-    const canCustomer=App.auth.can('club.manage')||App.auth.can('payment.credit');
 
-    let h='<div class="pos-console">';
-    h+=head('کنسول فروش','ثبت سفارش، انتخاب میز و پرداخت در یک صفحه',
-      B('c-new-takeaway','بیرونبر','plus','btn-outline btn-sm')+
-      B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o?o.id:''})+
-      B('nav','فاکتورها','receipt','btn-sm',{screen:'invoices'}));
-    h+='<div class="console-grid pos-workspace">';
-    // Compact action rail on the right, matching a dedicated POS terminal.
-    h+='<aside class="pos-action-rail" aria-label="عملیات فاکتور">'+
-      (App.auth.can('payment.settle')||App.auth.can('order.settlePrint')?'<button class="pos-rail-button pos-rail-pay" data-action="c-settle" '+(o?'':'disabled')+' title="پرداخت و تسویه فاکتور" aria-label="پرداخت و تسویه فاکتور">'+I('cash','lg')+'<span>پرداخت<br>فاکتور</span></button>':'')+
-      (canCustomer?'<button class="pos-rail-button pos-rail-customer" data-action="c-customer" '+(o?'':'disabled')+' title="تخصیص مشتری به فاکتور برای پرداخت اعتباری" aria-label="تخصیص مشتری برای اعتبار">'+I('user-search','lg')+'<span>مشتری<br>اعتباری</span></button>':'')+
-      '<button class="pos-rail-button pos-rail-invoices" data-action="nav" data-screen="invoices" title="فاکتورها" aria-label="فاکتورها">'+I('receipt','lg')+'<span>فاکتورها</span></button>'+
-      '<div class="pos-rail-count"><span>'+I('grid','sm')+'</span><b>'+N(occ)+'</b><small>میز اشغال</small></div></aside>';
-
-    // Tables and product selection share the central POS workspace.
-    h+='<section class="pos-catalog">'+
-      '<div class="card pos-tables-panel"><div class="pos-hall-toolbar"><div class="chips">'+halls.map(x=>'<button class="chip '+(x.id===s.cHallId?'active':'')+'" data-action="c-hall" data-id="'+x.id+'"><span class="dot" style="background:'+U.esc(x.color||'#f0a44b')+'"></span>'+U.esc(x.name)+' ('+N(d.tables.filter(t=>t.hallId===x.id).length)+')</button>').join('')+'</div><span class="pill">'+I('grid','sm')+' '+N(occ)+' میز اشغال</span></div>'+
-      '<div class="table-grid compact pos-table-grid">'+tables.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).map(tableCard).join('')+'</div>'+
-      (tables.length?'':'<div class="tiny muted">برای سفارش، ابتدا از بخش اطلاعات پایه میز تعریف کنید.</div>')+'</div>'+
-      '<div class="card pos-products"><div class="card-head"><h3>کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
-      '<div class="input-icon pos-search">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
-      '<div class="chips pos-groups"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
+    let h=head('کنسول فروش یکپارچه','همه مراحل ثبت سفارش تا تسویه در یک صفحه',
+      B('c-new-takeaway','سفارش بیرونبر','plus','btn-outline btn-sm')+B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o?o.id:''})+
+      B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
+    h+='<div class="hall-bar"><div class="chips">'+halls.map(x=>'<button class="chip '+(x.id===s.cHallId?'active':'')+'" data-action="c-hall" data-id="'+x.id+'"><span class="dot" style="background:'+U.esc(x.color||'#f0a44b')+'"></span>'+U.esc(x.name)+' ('+N(d.tables.filter(t=>t.hallId===x.id).length)+')</button>').join('')+'</div>'+
+      '<span class="spacer"></span><span class="pill">'+I('grid','sm')+' '+N(occ)+' میز اشغال</span></div>';
+    h+='<div class="card" style="margin-bottom:14px"><div class="table-grid compact">'+tables.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).map(tableCard).join('')+'</div></div>';
+    h+='<div class="console-grid">';
+    // 1) products
+    h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
+      '<div class="input-icon" style="margin-bottom:10px">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
+      '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
       groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
-      '<div class="product-grid pos-product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div></section>';
-
-    // Invoice lines and totals stay in a dedicated left-hand panel.
-    h+='<section class="pos-order-column">'+orderPanel(o);
-    if (o) {
-      h+='<div class="card pos-order-actions"><div class="card-head"><h3>ثبت و چاپ</h3></div><div class="pos-order-action-buttons">'+
-        (App.auth.can('order.save')?B('c-save','ذخیره','save','btn-sm'):'')+
-        (App.auth.can('order.print')?B('c-print','چاپ سفارش','print','btn-sm'):'')+
-        (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-sm'):'')+
-        (App.auth.can('order.print')?B('c-preview','پیش‌نمایش','receipt','btn-sm'):'')+
-        (App.auth.can('order.void')?B('c-void','لغو','trash','btn-sm btn-danger'):'')+
-        '</div><label class="check-line" style="margin-top:8px"><input type="checkbox" data-input="c-takeaway" '+(s.cTakeaway?'checked':'')+'> ثبت به‌عنوان سفارش Take Away</label></div>';
-      h+='<div class="card pos-pay-panel">'+payDraft(o)+'</div>';
-    }
-    h+='</section></div></div>';
+      '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
+    // 2) order + payment
+    h+='<div>'+orderPanel(o);
+    if (o) h+='<div class="card" style="margin-top:12px">'+payDraft(o)+'</div>';
+    h+='</div>';
+    // 3) actions
+    h+='<div class="card actions-panel"><div class="card-head"><h3>عملیات فاکتور</h3></div>'+
+      (o?'<div class="order-meta">'+
+        '<div class="t-row"><span>شماره</span><span class="num">'+N(o.no)+'</span></div>'+
+        '<div class="t-row"><span>وضعیت</span>'+V.statusBadge(o.status)+'</div>'+
+        '<div class="t-row"><span>ثبتکننده</span><span>'+U.esc(o.createdByName||'—')+'</span></div>'+
+        '<div class="t-row"><span>ویرایشکننده</span><span>'+U.esc(o.editedByName||'—')+'</span></div>'+
+        '<div class="t-row"><span>زمان اشغال</span><span class="num">'+U.duration(o.occupiedAt||o.createdAt)+'</span></div>'+
+        '<div class="t-row"><span>میز</span><span>'+U.esc(App.model.label(o))+'</span></div></div><div class="divider"></div>':'')+
+      '<div class="action-stack">'+
+        (App.auth.can('order.save')?B('c-save','ذخیره (بدون چاپ)','save','btn-block'+(o?'':' disabled')):'')+
+        (App.auth.can('order.print')?B('c-print','چاپ سفارش','print','btn-block'+(o?'':' disabled')):'')+
+        (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-block'+(o?'':' disabled')):'')+
+        ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','ثبت و چاپ نهایی','receipt','btn-primary btn-block btn-lg'+(o?'':' disabled')):'')+
+      '</div>'+
+      '<div class="tiny faint" style="margin-top:8px">ذخیره: بدون هیچ چاپ · چاپ سفارش: صندوق و آشپزخانه، بدون تسویه · ثبت سفارش: ارسال اقلام به ایستگاهها، میز اشغال میماند · ثبت و چاپ: تسویه، چاپ فاکتور و آزادسازی میز.</div>'+
+      '<div class="divider"></div><label class="check-line"><input type="checkbox" data-input="c-takeaway" '+(s.cTakeaway?'checked':'')+'> ثبت بهعنوان سفارش Take Away</label>'+
+      (o?'<div class="row tight" style="margin-top:10px">'+(App.auth.can('club.manage')?B('c-club','مشتری / باشگاه','user','btn-sm'):'')+(App.auth.can('order.print')?B('c-preview','پیشنمایش فاکتور','receipt','btn-sm'):'')+(App.auth.can('order.void')?B('c-void','لغو سفارش','trash','btn-sm btn-danger'):'')+'</div>':'')+
+      '</div></div>';
     return h;
   }
 
@@ -238,8 +236,8 @@ App.inputs = App.inputs || {};
         }});
     }),
     'c-type': el => withOrder(o => { if(!App.auth.can('order.edit'))return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');App.store.commit(()=>{o.type=el.dataset.type;},'order.edit','نوع سفارش'); refresh(); }),
-    'c-customer': () => withOrder(o => (App.auth.can('club.manage')||App.auth.can('payment.credit'))?clubPicker(o):App.ui.toast('دسترسی تخصیص مشتری ندارید.','err')),
-    'c-club': () => withOrder(o => (App.auth.can('club.manage')||App.auth.can('payment.credit'))?clubPicker(o):App.ui.toast('دسترسی تخصیص مشتری ندارید.','err')),
+    'c-customer': () => withOrder(o => App.auth.can('club.manage')?clubPicker(o):App.ui.toast('دسترسی باشگاه مشتریان ندارید.','err')),
+    'c-club': () => withOrder(o => App.auth.can('club.manage')?clubPicker(o):App.ui.toast('دسترسی باشگاه مشتریان ندارید.','err')),
     'c-notes': () => withOrder(o => {if(!App.auth.can('order.edit'))return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');return App.ui.form({title:'یادداشت سفارش',fields:[{name:'notes',label:'توضیحات',type:'textarea',value:o.notes||''}],
       onSubmit:v=>{App.store.commit(()=>{o.notes=v.notes;},'order.edit','یادداشت سفارش');refresh();}}); }),
     'c-method': el => { stInit().cPay.method=el.dataset.method; stInit().cPay.amount=null; stInit().cPay.methodPicked=true; refresh(); },
