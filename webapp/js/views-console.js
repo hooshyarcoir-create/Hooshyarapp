@@ -171,10 +171,10 @@ App.inputs = App.inputs || {};
       B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o.id})+
       B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
     h+='<div class="card order-command-bar">'+
-      (App.auth.can('order.save')?B('c-save','ذخیره','save','btn-sm'):'')+
-      (App.auth.can('order.print')?B('c-print','چاپ سفارش','print','btn-sm'):'')+
+      (App.auth.can('order.print')?B('c-print','چاپ صندوق','receipt','btn-sm'):'')+
+      (App.auth.can('kitchen.print')?B('c-kitchen-print','چاپ آشپزخانه','print','btn-sm'):'')+
       (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-sm'):'')+
-      ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','ثبت و چاپ نهایی','receipt','btn-primary btn-sm'):'')+
+      ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','تسویه فاکتور','receipt','btn-primary btn-sm'):'')+
       '</div>';
     h+='<div class="console-grid">';
     // This is the second step: the catalog is shown only after a table/order exists.
@@ -204,6 +204,15 @@ App.inputs = App.inputs || {};
   /* ------------------------------- actions ------------------------------- */
   function withOrder(fn) { const o=currentOrder(); if (!o) { App.ui.toast('ابتدا یک میز یا سفارش بیرونبر انتخاب کنید.','err'); return; } return fn(o); }
   function refresh() { App.ui.refresh(); }
+  async function printKitchenOrder(o,reprint) {
+    try {
+      const results=await App.print.printKitchen(o,{reprint:!!reprint});
+      if(!results.length) return App.ui.toast(reprint?'برای این فاکتور قلمی برای چاپ آشپزخانه وجود ندارد.':'تغییر تازه‌ای برای چاپ آشپزخانه وجود ندارد.','err');
+      const ok=results.filter(r=>r.ok).length;
+      App.ui.toast((reprint?'چاپ مجدد کل فاکتور آشپزخانه: ':'چاپ آخرین تغییرات آشپزخانه: ')+U.num(ok)+' چاپگر پاسخ دادند.',ok?'ok':'err');
+      results.filter(r=>!r.ok).forEach(r=>App.ui.toast(r.error||'خطای چاپ آشپزخانه','err'));
+    } catch(err) { App.ui.toast(err.message||'خطا در چاپ آشپزخانه','err'); }
+  }
   Object.assign(App.actions, {
     'c-hall': el => { st().cHallId=el.dataset.id; st().cTableId=null; st().cOrderId=null; st().cStep='tables'; App.ui.render(); },
     'c-back-tables': () => { st().cStep='tables'; App.ui.render(); },
@@ -238,7 +247,7 @@ App.inputs = App.inputs || {};
       if(!App.auth.can('order.edit')) return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');
       const l=o.lines.find(x=>x.id===el.dataset.line); if(!l)return;
       App.ui.form({title:'توضیحات '+l.name,fields:[{name:'note',label:'توضیح آشپزخانه',type:'textarea',value:l.note||''}],
-        onSubmit:v=>{ App.store.commit(()=>{l.note=v.note;o.updatedAt=Date.now();},'order.edit','توضیح قلم'); refresh(); }});
+        onSubmit:v=>{ App.store.commit(()=>{l.note=v.note;l.sent={};l.sentQty=0;o.updatedAt=Date.now();},'order.edit','توضیح قلم'); refresh(); }});
     }),
     'c-line-price': el => withOrder(o => {
       if(!App.auth.can('price.change')) return App.ui.toast('دسترسی تغییر قیمت ندارید.','err');
@@ -292,12 +301,20 @@ App.inputs = App.inputs || {};
       App.store.saveNow(); App.ui.toast('تغییرات ذخیره شد. هیچ دستور چاپی ارسال نشد.','ok'); refresh();
     }),
     'c-print': () => withOrder(async o => {
-      if(!App.auth.can('order.print')) return App.ui.toast('دسترسی چاپ سفارش ندارید.','err');
-      const rs=await App.print.printCustomerReceipt(o,{includeKitchen:true});
+      if(!App.auth.can('order.print')) return App.ui.toast('دسترسی چاپ صندوق ندارید.','err');
+      const rs=await App.print.printCustomerReceipt(o,{includeKitchen:false});
       const ok=rs.filter(r=>r.ok).length;
-      App.ui.toast('چاپ سفارش: '+U.num(ok)+' چاپگر پاسخ دادند. فاکتور تسویه نشد و میز آزاد نشد.',ok?'ok':'err');
+      App.ui.toast('چاپ صندوق: '+U.num(ok)+' چاپگر پاسخ دادند. سفارش تسویه نشد و میز آزاد نشد.',ok?'ok':'err');
       rs.filter(r=>!r.ok).forEach(r=>App.ui.toast(r.error||'خطای چاپ','err'));
       refresh();
+    }),
+    'c-kitchen-print': () => withOrder(o => {
+      if(!App.auth.can('kitchen.print')) return App.ui.toast('دسترسی چاپ آشپزخانه ندارید.','err');
+      App.ui.modal({title:'چاپ آشپزخانه',body:'<p>چاپ آخرین تغییرات فقط اقلام جدید یا تغییر یافتهٔ ارسال‌نشده را چاپ می‌کند. چاپ کل فاکتور، همهٔ اقلام را مجدداً می‌فرستد.</p>',buttons:[
+        {label:'چاپ آخرین تغییرات',icon:'print',cls:'btn-primary',onClick:()=>{App.ui.close();printKitchenOrder(o,false);}},
+        {label:'چاپ کل فاکتور',icon:'refresh',onClick:()=>{App.ui.close();printKitchenOrder(o,true);}},
+        {label:'انصراف',close:true}
+      ]});
     }),
     'c-submit': () => withOrder(async o => {
       if(!App.auth.can('order.submit')) return App.ui.toast('دسترسی ثبت سفارش ندارید.','err');
