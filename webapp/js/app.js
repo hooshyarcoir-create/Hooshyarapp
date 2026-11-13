@@ -93,8 +93,8 @@ App.ui = (function () {
       return '<button class="nav-item '+(state.screen===n.screen?'active':'')+'" data-action="nav" data-screen="'+n.screen+'">'+
         U.icon(n.icon)+'<span>'+n.label+'</span>'+(badge?'<span class="badge accent">'+U.num(badge)+'</span>':'')+'</button>';
     }).join('');
-    const short = { console:'فروش', invoices:'فاکتورها', reports:'گزارش', base:'اطلاعات پایه', settings:'تنظیمات' };
-    const bottom = ['console','invoices','reports','base','settings'].map(s => items.find(n => n.screen===s)).filter(Boolean).slice(0,5);
+    const short = { console:'فروش', invoices:'فاکتورها', reports:'گزارش', settings:'تنظیمات' };
+    const bottom = ['console','invoices','reports','settings'].map(s => items.find(n => n.screen===s)).filter(Boolean).slice(0,4);
     document.getElementById('bottom-nav').innerHTML = bottom.map(n =>
       '<button class="' + (state.screen===n.screen?'active':'') + '" data-action="nav" data-screen="' + n.screen + '">' + U.icon(n.icon) + '<span>' + short[n.screen] + '</span></button>').join('');
 
@@ -108,6 +108,7 @@ App.ui = (function () {
     Object.assign(state, patch || {});
     state.screen = screen;
     const sb = document.querySelector('.sidebar'); if (sb) sb.classList.remove('open');
+    const backdrop=document.getElementById('sidebar-backdrop'); if(backdrop)backdrop.hidden=true;
     render();
   }
 
@@ -304,7 +305,8 @@ Object.assign(App.actions, {
   'nav': el => {if(el.dataset.screen==='base')App.ui.state.baseMenuOpen=true;App.ui.go(el.dataset.screen);},
   'modal-close': () => App.ui.close(),
   'logout': () => App.ui.confirm('از حساب کاربری خارج میشوید؟ اطلاعات ذخیره باقی میماند.', () => { App.auth.logout(); App.ui.render(); }),
-  'toggle-menu': () => { const sb = document.querySelector('.sidebar'); if (sb) sb.classList.toggle('open'); },
+  'toggle-menu': () => { const sb=document.querySelector('.sidebar');if(!sb)return;const open=!sb.classList.contains('open');sb.classList.toggle('open',open);const backdrop=document.getElementById('sidebar-backdrop');if(backdrop)backdrop.hidden=!open; },
+  'close-menu': () => { const sb=document.querySelector('.sidebar');if(sb)sb.classList.remove('open');const backdrop=document.getElementById('sidebar-backdrop');if(backdrop)backdrop.hidden=true; },
   'user-menu': () => {
     const u = App.auth.current(); if (!u) return;
     App.ui.modal({ title:'حساب کاربری',

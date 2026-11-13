@@ -148,7 +148,7 @@ App.report = (function () {
   const REPORTS = [
     { id:'orders',      label:'سفارشات',          icon:'receipt', desc:'بر اساس تاریخ و ساعت، وضعیت، نوع و کاربر' },
     { id:'items',       label:'اقلام فروش رفته',  icon:'book',    desc:'تعداد و مبلغ هر کالا در بازه زمانی' },
-    { id:'changes',     label:'حذف و ویرایش',     icon:'edit',    desc:'بازیابی فاکتور و چاپ نسخهها' },
+    { id:'changes',     label:'ویرایش و حذف فاکتور', icon:'edit', desc:'تاریخچه ویرایش، حذف، بازیابی و چاپ مجدد' },
     { id:'credit',      label:'گزارش اعتباری',    icon:'note',    desc:'سقف، مصرف و مانده اعتبار مشتریان' },
     { id:'cash',        label:'فروش نقد',         icon:'cash',    desc:'تراکنشهای نقدی به تفکیک فاکتور' },
     { id:'card',        label:'فروش کارتخوان',    icon:'wallet',  desc:'تراکنشها، مرجع، پایانه و وضعیت' },

@@ -14,10 +14,7 @@ App.inputs = App.inputs || {};
 
   const TABS = [
     { id:'current', label:'جاری', icon:'grid' },
-    { id:'paid',    label:'پرداخت شده', icon:'check' },
-    { id:'edited',  label:'ویرایش شده', icon:'edit' },
-    { id:'deleted', label:'حذف شده', icon:'trash' },
-    { id:'all',     label:'همه', icon:'layers' }
+    { id:'paid',    label:'تسویه‌شده', icon:'check' }
   ];
 
   function source() {
@@ -26,20 +23,19 @@ App.inputs = App.inputs || {};
   }
   function bucket(x, tab) {
     if (tab === 'all') return true;
-    if (tab === 'current') return ['draft','current','void'].indexOf(x.status) !== -1;
-    if (tab === 'deleted') return x.status === 'deleted';
-    return x.status === tab;
+    if (tab === 'current') return ['draft','current'].indexOf(x.status) !== -1;
+    return tab === 'paid' && x.status === 'paid';
   }
   function method(x) {
     const m=App.report.methodOf(x);
     return '<span class="badge '+(m==='mixed'?'accent':m==='card'?'info':m==='credit'?'warn':'ok')+'">'+U.esc(App.report.METHOD_LABEL[m]||m)+'</span>';
   }
   function invView() {
-    const s=st(), tab=s.invTab||'current', d=D();
+    const s=st(), tab=TABS.some(t=>t.id===s.invTab)?s.invTab:'current', d=D();
     let list=source().filter(x=>bucket(x,tab)).sort((a,b)=>(b.paidAt||b.updatedAt||b.createdAt||0)-(a.paidAt||a.updatedAt||a.createdAt||0));
     const q=(s.invSearch||'').trim(); if(q) list=list.filter(x=>String(x.no).indexOf(q)>=0 || (x.customer&&x.customer.name||'').indexOf(q)>=0 || App.model.label(x).indexOf(q)>=0);
     const sum=U.sum(list.filter(x=>x.status!=='deleted'),x=>Number(x.total)||App.model.totals(x).total);
-    let h=head('مدیریت فاکتورها','جاری، پرداختشده، ویرایششده و حذفشده بهصورت مجزا',
+    let h=head('مدیریت فاکتورها','فقط فاکتورهای جاری و تسویه‌شده؛ نسخه‌های ویرایش یا حذف‌شده را در گزارش‌ها ببینید.',
       B('nav','کنسول ثبت سفارش','grid','btn-primary btn-sm',{screen:'console'})+
       B('inv-export','خروجی CSV','save','btn-sm'));
     h+='<div class="stat-strip">' + TABS.map(t=>{

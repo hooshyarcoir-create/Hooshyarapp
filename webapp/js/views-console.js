@@ -184,10 +184,11 @@ App.inputs = App.inputs || {};
       B('c-back-tables','بازگشت به سالن و میزها','back','btn-outline btn-sm')+
       B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o.id})+
       B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
+    const canSubmit=App.auth.can('order.submit'),canPrint=App.auth.can('order.print');
     h+='<div class="card order-command-bar">'+
-      (App.auth.can('order.print')?B('c-print','چاپ صندوق','receipt','btn-sm'):'')+
+      (App.auth.can('order.save')?B('c-save','ذخیره','save','btn-outline btn-sm'):'')+
+      (canSubmit&&canPrint?B('c-submit-print','ثبت و چاپ صندوق','print','btn-primary btn-sm'):((canPrint?B('c-print','چاپ صندوق','receipt','btn-sm'):'')+(canSubmit?B('c-submit','ثبت سفارش','check','btn-outline btn-sm'):'')))+
       (App.auth.can('kitchen.print')?B('c-kitchen-print','چاپ آشپزخانه','print','btn-sm'):'')+
-      (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-sm'):'')+
       ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','تسویه فاکتور','receipt','btn-primary btn-sm'):'')+
       '</div>';
     h+='<div class="console-grid">';
@@ -344,6 +345,21 @@ App.inputs = App.inputs || {};
         {label:'چاپ کل فاکتور',icon:'refresh',onClick:()=>{App.ui.close();printKitchenOrder(o,true);}},
         {label:'انصراف',close:true}
       ]});
+    }),
+    'c-submit-print': () => withOrder(async o => {
+      if(!App.auth.can('order.submit')||!App.auth.can('order.print')) return App.ui.toast('برای ثبت و چاپ، دسترسی هر دو عملیات لازم است.','err');
+      const v=App.club.validateOrder(o); if(!v.ok) return App.ui.toast(v.error,'err');
+      const r=App.domain.submit(o); if(!r.ok) return App.ui.toast(r.error,'err');
+      let kitchen=[],receipt=[];
+      try { kitchen=await App.print.printKitchen(o); }
+      catch(err) { App.ui.toast(err.message||'خطا در ارسال سفارش به آشپزخانه','err'); }
+      try { receipt=await App.print.printCustomerReceipt(o,{includeKitchen:false}); }
+      catch(err) { App.ui.toast(err.message||'خطا در چاپ صندوق','err'); }
+      const kitchenOk=kitchen.filter(x=>x.ok).length,receiptOk=receipt.filter(x=>x.ok).length;
+      App.ui.toast('سفارش ثبت شد · آشپزخانه: '+U.num(kitchenOk)+' · چاپ صندوق: '+U.num(receiptOk),receiptOk?'ok':'err');
+      kitchen.filter(x=>!x.ok).forEach(x=>App.ui.toast(x.error||'خطای چاپ آشپزخانه','err'));
+      receipt.filter(x=>!x.ok).forEach(x=>App.ui.toast(x.error||'خطای چاپ صندوق','err'));
+      refresh();
     }),
     'c-submit': () => withOrder(async o => {
       if(!App.auth.can('order.submit')) return App.ui.toast('دسترسی ثبت سفارش ندارید.','err');
