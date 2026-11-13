@@ -52,21 +52,24 @@ App.inputs = App.inputs || {};
       '<span class="badge '+ss.cls+'">'+U.esc(ss.label)+'</span><span class="p-add">'+I(avail?'plus':'lock','sm')+'</span></div></button>';
   }
   function payDraft(o) {
-    const p=stInit().cPay, d=D(), psps=App.pay.enabledPsps(), custs=App.pay.customers();
+    const p=stInit().cPay, d=D(), psps=App.pay.enabledPsps();
     const rem=App.model.remaining(o);
     let h='<div class="card-head"><h3>نحوه پرداخت</h3><span class="spacer"></span><span class="badge accent num">مانده '+M(rem)+'</span></div>';
-    const methods=(d.paymentMethods||[]).filter(x=>x.enabled!==false).map(x=>({id:x.kind==='split'?'dongi':x.kind,label:x.name,icon:x.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[x.kind]||'tag')}));
+    const methods=(d.paymentMethods||[]).filter(x=>x.enabled!==false&&(x.kind!=='credit'||App.auth.can('payment.credit'))).map(x=>({id:x.kind==='split'?'dongi':x.kind,label:x.name,icon:x.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[x.kind]||'tag')}));
     h+='<div class="method-grid">'+methods.map(m=>'<button class="method-btn '+(p.method===m.id?'active':'')+'" data-action="c-method" data-method="'+U.esc(m.id)+'">'+I(m.icon)+U.esc(m.label)+'</button>').join('')+'</div>';
     h+='<div class="form-grid" style="margin-top:10px">';
-    h+='<label class="field"><span>مبلغ پرداخت</span><input type="number" data-input="c-amount" value="'+(p.amount!=null?p.amount:rem)+'" min="1"></label>';
-    if (p.method==='card') h+='<label class="field"><span>درگاه / کارتخوان</span><select data-input="c-psp">'+psps.map(x=>'<option value="'+x.id+'" '+(p.pspId===x.id?'selected':'')+'>'+U.esc(x.name)+'</option>').join('')+'</select></label>';
-    else if (p.method==='credit') {
-      const c=App.model.customer(p.customerId||o.customerId);
-      h+='<label class="field"><span>مشتری اعتباری</span><select data-input="c-credit">'+custs.map(x=>'<option value="'+x.id+'" '+(x.id===(p.customerId||o.customerId)?'selected':'')+'>'+U.esc(App.club.fullName(x))+' · مجاز '+M(App.domain.creditAvailable(x))+'</option>').join('')+'</select></label>';
-      h+='<div class="full tiny '+(c&&App.domain.creditAvailable(c)<rem?'danger':'muted')+'">اعتبار مجاز: <b class="num">'+M(c?App.domain.creditAvailable(c):0)+'</b> · مصرفشده: <b class="num">'+M(c?c.credit:0)+'</b></div>';
-    } else if (p.method==='cash') h+='<label class="field"><span>مبلغ دریافتی (پول خرد)</span><input type="number" data-input="c-cash" value="'+U.esc(p.cashReceived||'')+'" placeholder="اختیاری"></label>';
-    else h+='<label class="field"><span>تعداد نفرات دنگ</span><input type="number" data-input="c-heads" value="'+N(p.heads)+'" min="2" max="30"></label>'+
-      '<label class="field"><span>روش پرداخت هر سهم</span><select data-input="c-dongi"><option value="cash" '+(p.dongiMethod==='cash'?'selected':'')+'>نقدی</option><option value="card" '+(p.dongiMethod==='card'?'selected':'')+'>کارتخوان</option><option value="credit" '+(p.dongiMethod==='credit'?'selected':'')+'>اعتباری</option></select></label>';
+    if (!p.method) h+='<div class="full payment-prompt">ابتدا یکی از روش‌های پرداخت بالا را انتخاب کنید.</div>';
+    else {
+      h+='<label class="field"><span>مبلغ پرداخت</span><input type="number" data-input="c-amount" value="'+(p.amount!=null?p.amount:rem)+'" min="1"></label>';
+      if (p.method==='card') h+='<label class="field"><span>درگاه / کارتخوان</span><select data-input="c-psp">'+psps.map(x=>'<option value="'+x.id+'" '+(p.pspId===x.id?'selected':'')+'>'+U.esc(x.name)+'</option>').join('')+'</select></label>';
+      else if (p.method==='credit') {
+        const c=App.model.customer(p.customerId||o.customerId);
+        h+='<div class="full credit-customer-summary"><span><b>مشتری اعتباری:</b> '+(c?U.esc(App.club.fullName(c)):'<span class="danger">انتخاب نشده</span>')+'</span><button class="btn btn-sm" data-action="c-credit-picker">'+I('user','sm')+' تغییر شخص</button></div>';
+        h+='<div class="full tiny '+(c&&App.domain.creditAvailable(c)<rem?'danger':'muted')+'">اعتبار مجاز: <b class="num">'+M(c?App.domain.creditAvailable(c):0)+'</b> · مصرف‌شده: <b class="num">'+M(c?c.credit:0)+'</b></div>';
+      } else if (p.method==='cash') h+='<label class="field"><span>مبلغ دریافتی (پول خرد)</span><input type="number" data-input="c-cash" value="'+U.esc(p.cashReceived||'')+'" placeholder="اختیاری"></label>';
+      else if (p.method==='dongi') h+='<label class="field"><span>تعداد نفرات دنگ</span><input type="number" data-input="c-heads" value="'+N(p.heads)+'" min="2" max="30"></label>'+
+        '<label class="field"><span>روش پرداخت هر سهم</span><select data-input="c-dongi"><option value="cash" '+(p.dongiMethod==='cash'?'selected':'')+'>نقدی</option><option value="card" '+(p.dongiMethod==='card'?'selected':'')+'>کارتخوان</option><option value="credit" '+(p.dongiMethod==='credit'?'selected':'')+'>اعتباری</option></select></label>';
+    }
     h+='</div>';
     if ((o.payments||[]).length) {
       h+='<div class="divider"></div>'+(o.payments||[]).map(pay=>'<div class="list-row"><span class="lr-main"><span class="lr-title">'+U.esc(pay.label||pay.method)+(pay.status==='failed'?' <span class="badge danger">ناموفق</span>':'')+'</span><span class="lr-sub">'+U.time(pay.at)+' · '+U.esc(pay.byName||'')+(pay.ref?' · مرجع '+U.esc(pay.ref):'')+'</span></span><span class="num strong">'+M(pay.amount)+'</span>'+
@@ -80,9 +83,8 @@ App.inputs = App.inputs || {};
     const personnel=D().personnel.filter(x=>x.active!==false);
     let h='';
     h+='<div class="card"><div class="card-head"><h3>فاکتور '+N(o.no)+'</h3><span class="spacer"></span>'+V.statusBadge(o.status)+'</div>';
-    h+='<div class="row tight" style="margin-bottom:8px">';
-    ['حضوری','بیرون بر','Take Away'].forEach(x=>h+='<button class="chip '+(o.type===x?'active':'')+'" data-action="c-type" data-type="'+x+'">'+x+'</button>');
-    h+='<span class="spacer"></span><span class="pill">'+I('clock','sm')+' '+U.duration(o.occupiedAt||o.createdAt)+'</span></div>';
+    h+='<div class="row tight" style="margin-bottom:8px"><span class="pill">'+I('clock','sm')+' '+U.duration(o.occupiedAt||o.createdAt)+'</span>'+
+      (o.type==='Take Away'?'<span class="badge info">بیرون‌بر</span>':'')+'</div>';
     h+='<div class="row tight" style="margin-bottom:8px">'+
       '<button class="btn btn-sm" data-action="c-customer">'+I('user','sm')+' مشتری: '+(o.customer&&o.customer.name?U.esc(o.customer.name):'<span class="warn">ثبت نشده</span>')+'</button>'+
       '<select class="sel-sm" data-input="c-waiter" style="width:auto;min-width:130px">'+personnel.map(p=>'<option value="'+p.id+'" '+(o.personnelId===p.id?'selected':'')+'>'+U.esc(p.name)+'</option>').join('')+'</select>'+
@@ -112,6 +114,27 @@ App.inputs = App.inputs || {};
     h+='</div>';
     return h;
   }
+  function paymentSummary(o) {
+    const t=App.model.totals(o), customer=App.model.customer(o.customerId);
+    let h='<div class="card payment-summary"><div class="card-head"><h3>اطلاعات صورت‌حساب</h3><span class="spacer"></span>'+V.statusBadge(o.status)+'</div>'+
+      '<div class="order-meta"><div class="t-row"><span>شماره فاکتور</span><span class="num">'+N(o.no)+'</span></div>'+
+      '<div class="t-row"><span>سالن و میز</span><span>'+U.esc(App.model.label(o))+'</span></div>'+
+      '<div class="t-row"><span>مشتری</span><span>'+(customer?U.esc(App.club.fullName(customer)):'ثبت نشده')+'</span></div></div>'+
+      '<div class="divider"></div><div class="payment-summary-lines">';
+    (o.lines||[]).filter(l=>!l.voided).forEach(l=>{
+      const amount=App.domain.lineCalc(l,D().settings).net;
+      h+='<div class="t-row"><span>'+U.esc(l.name)+' × '+N(l.qty)+'</span><span class="num">'+M(amount)+'</span></div>';
+    });
+    h+='</div><div class="divider"></div><div class="totals">'+
+      '<div class="t-row"><span>جمع اقلام</span><span class="num">'+M(t.gross)+'</span></div>'+
+      (t.lineDiscount?'<div class="t-row"><span>تخفیف اقلام</span><span class="num">− '+M(t.lineDiscount)+'</span></div>':'')+
+      '<div class="t-row"><span>تخفیف فاکتور</span><span class="num">− '+M(t.discount)+'</span></div>'+
+      '<div class="t-row"><span>مالیات و عوارض</span><span class="num">'+M(t.tax+t.levy)+'</span></div>'+
+      '<div class="t-row total"><span>مبلغ فاکتور</span><span class="num">'+M(t.total)+'</span></div>'+
+      '<div class="t-row"><span>پرداخت‌شده</span><span class="num">'+M(App.model.paid(o))+'</span></div>'+
+      '<div class="t-row total"><span>مانده</span><span class="num">'+M(App.model.remaining(o))+'</span></div></div></div>';
+    return h;
+  }
 
   function consoleView() {
     stInit();
@@ -125,7 +148,7 @@ App.inputs = App.inputs || {};
     const products=d.products.filter(p=>(!gid||p.groupId===gid)&&(!q||p.name.indexOf(q)!==-1||(p.code||'').indexOf(q)!==-1));
     const occ=d.tables.filter(t=>t.status==='occupied').length;
 
-    if (s.cStep!=='order' || !o) {
+    if (s.cStep==='tables' || !o) {
       let selectView=head('انتخاب سالن و میز','ابتدا سالن را انتخاب کنید و سپس برای ورود به صفحه سفارش، روی میز بزنید.',
         B('c-new-takeaway','سفارش بیرون‌بر','plus','btn-outline btn-sm')+
         B('nav','فاکتورها','receipt','btn-sm',{screen:'invoices'}));
@@ -135,11 +158,24 @@ App.inputs = App.inputs || {};
       return selectView;
     }
 
+    if (s.cStep==='payment') {
+      const payHead=head('تسویه فاکتور '+N(o.no),'روش پرداخت و اطلاعات صورت‌حساب را بررسی کنید.',
+        B('c-back-order','بازگشت به سفارش','back','btn-outline btn-sm')+
+        ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-confirm-payment','تسویه و چاپ فاکتور','receipt','btn-primary btn-sm'):''));
+      return payHead+'<div class="payment-page-grid">'+paymentSummary(o)+'<div class="card payment-page-methods">'+payDraft(o)+'</div></div>';
+    }
+
     const activeHall=App.model.hall(o.hallId);
     let h=head('ثبت سفارش',U.esc(activeHall?activeHall.name+' · ':'')+U.esc(App.model.label(o))+' · فاکتور '+N(o.no),
       B('c-back-tables','بازگشت به سالن و میزها','back','btn-outline btn-sm')+
       B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o.id})+
       B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
+    h+='<div class="card order-command-bar">'+
+      (App.auth.can('order.save')?B('c-save','ذخیره','save','btn-sm'):'')+
+      (App.auth.can('order.print')?B('c-print','چاپ سفارش','print','btn-sm'):'')+
+      (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-sm'):'')+
+      ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','ثبت و چاپ نهایی','receipt','btn-primary btn-sm'):'')+
+      '</div>';
     h+='<div class="console-grid">';
     // This is the second step: the catalog is shown only after a table/order exists.
     h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
@@ -147,28 +183,20 @@ App.inputs = App.inputs || {};
       '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
       groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
       '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
-    // 2) order + payment
-    h+='<div>'+orderPanel(o);
-    if (o) h+='<div class="card" style="margin-top:12px">'+payDraft(o)+'</div>';
-    h+='</div>';
-    // 3) actions
-    h+='<div class="card actions-panel"><div class="card-head"><h3>عملیات فاکتور</h3></div>'+
-      (o?'<div class="order-meta">'+
+    // Invoice lines are in the center; invoice details remain beside them.
+    h+='<div>'+orderPanel(o)+'</div>';
+    h+='<div class="card actions-panel"><div class="card-head"><h3>اطلاعات فاکتور</h3></div>'+
+      '<div class="order-meta">'+
         '<div class="t-row"><span>شماره</span><span class="num">'+N(o.no)+'</span></div>'+
         '<div class="t-row"><span>وضعیت</span>'+V.statusBadge(o.status)+'</div>'+
-        '<div class="t-row"><span>ثبتکننده</span><span>'+U.esc(o.createdByName||'—')+'</span></div>'+
-        '<div class="t-row"><span>ویرایشکننده</span><span>'+U.esc(o.editedByName||'—')+'</span></div>'+
+        '<div class="t-row"><span>ثبت‌کننده</span><span>'+U.esc(o.createdByName||'—')+'</span></div>'+
+        '<div class="t-row"><span>ویرایش‌کننده</span><span>'+U.esc(o.editedByName||'—')+'</span></div>'+
         '<div class="t-row"><span>زمان اشغال</span><span class="num">'+U.duration(o.occupiedAt||o.createdAt)+'</span></div>'+
-        '<div class="t-row"><span>میز</span><span>'+U.esc(App.model.label(o))+'</span></div></div><div class="divider"></div>':'')+
-      '<div class="action-stack">'+
-        (App.auth.can('order.save')?B('c-save','ذخیره (بدون چاپ)','save','btn-block'+(o?'':' disabled')):'')+
-        (App.auth.can('order.print')?B('c-print','چاپ سفارش','print','btn-block'+(o?'':' disabled')):'')+
-        (App.auth.can('order.submit')?B('c-submit','ثبت سفارش','check','btn-outline btn-block'+(o?'':' disabled')):'')+
-        ((App.auth.can('payment.settle')||App.auth.can('order.settlePrint'))?B('c-settle','ثبت و چاپ نهایی','receipt','btn-primary btn-block btn-lg'+(o?'':' disabled')):'')+
-      '</div>'+
-      '<div class="tiny faint" style="margin-top:8px">ذخیره: بدون هیچ چاپ · چاپ سفارش: صندوق و آشپزخانه، بدون تسویه · ثبت سفارش: ارسال اقلام به ایستگاهها، میز اشغال میماند · ثبت و چاپ: تسویه، چاپ فاکتور و آزادسازی میز.</div>'+
-      '<div class="divider"></div><label class="check-line"><input type="checkbox" data-input="c-takeaway" '+(s.cTakeaway?'checked':'')+'> ثبت بهعنوان سفارش Take Away</label>'+
-      (o?'<div class="row tight" style="margin-top:10px">'+(App.auth.can('club.manage')?B('c-club','مشتری / باشگاه','user','btn-sm'):'')+(App.auth.can('order.print')?B('c-preview','پیشنمایش فاکتور','receipt','btn-sm'):'')+(App.auth.can('order.void')?B('c-void','لغو سفارش','trash','btn-sm btn-danger'):'')+'</div>':'')+
+        '<div class="t-row"><span>میز</span><span>'+U.esc(App.model.label(o))+'</span></div></div><div class="divider"></div>'+
+      '<div class="row tight">'+
+        (App.auth.can('club.manage')?B('c-club','تخصیص مشتری','user','btn-sm'):'')+
+        (App.auth.can('order.print')?B('c-preview','پیش‌نمایش فاکتور','receipt','btn-sm'):'')+
+        (App.auth.can('order.void')?B('c-void','لغو سفارش','trash','btn-sm btn-danger'):'')+
       '</div></div>';
     return h;
   }
@@ -246,12 +274,16 @@ App.inputs = App.inputs || {};
           refresh();
         }});
     }),
-    'c-type': el => withOrder(o => { if(!App.auth.can('order.edit'))return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');App.store.commit(()=>{o.type=el.dataset.type;},'order.edit','نوع سفارش'); refresh(); }),
     'c-customer': () => withOrder(o => App.auth.can('club.manage')?clubPicker(o):App.ui.toast('دسترسی باشگاه مشتریان ندارید.','err')),
     'c-club': () => withOrder(o => App.auth.can('club.manage')?clubPicker(o):App.ui.toast('دسترسی باشگاه مشتریان ندارید.','err')),
     'c-notes': () => withOrder(o => {if(!App.auth.can('order.edit'))return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');return App.ui.form({title:'یادداشت سفارش',fields:[{name:'notes',label:'توضیحات',type:'textarea',value:o.notes||''}],
       onSubmit:v=>{App.store.commit(()=>{o.notes=v.notes;},'order.edit','یادداشت سفارش');refresh();}}); }),
-    'c-method': el => { stInit().cPay.method=el.dataset.method; stInit().cPay.amount=null; stInit().cPay.methodPicked=true; refresh(); },
+    'c-method': el => withOrder(o => {
+      const p=stInit().cPay; p.method=el.dataset.method; p.amount=null;
+      if(p.method==='credit') { p.methodPicked=false; return creditCustomerPicker(o,false); }
+      p.methodPicked=true; refresh();
+    }),
+    'c-credit-picker': () => withOrder(o => creditCustomerPicker(o,stInit().cPay.method==='dongi')),
     'c-pay-del': el => withOrder(o => { if(!App.auth.can('payment.refund'))return App.ui.toast('دسترسی اصلاح پرداخت ندارید.','err');App.pay.removePayment(o,el.dataset.id); refresh(); }),
     'c-save': () => withOrder(o => {
       if(!App.auth.can('order.save')) return App.ui.toast('دسترسی ذخیره سفارش ندارید.','err');
@@ -280,15 +312,15 @@ App.inputs = App.inputs || {};
     'c-settle': () => withOrder(o => {
       if(!App.auth.can('payment.settle')&&!App.auth.can('order.settlePrint')) return App.ui.toast('دسترسی تسویه ندارید.','err');
       const p=stInit().cPay;
-      if(!p.methodPicked){
-        const choices=(D().paymentMethods||[]).filter(x=>x.enabled!==false).map(m=>({
-          label:m.name,icon:m.icon||({cash:'cash',card:'wallet',credit:'note',split:'split'}[m.kind]||'tag'),
-          onClick:()=>chooseSettleMethod(m.kind==='split'?'dongi':m.kind)
-        }));
-        choices.push({label:'انصراف',close:true});
-        App.ui.modal({title:'انتخاب روش پرداخت',body:'<p>پیش از تسویه، روش پرداخت فاکتور را انتخاب کنید. مبلغ و مشخصات تکمیلی را در پنل پرداخت بررسی نمایید.</p>',buttons:choices});
-        return;
-      }
+      p.method=''; p.methodPicked=false; p.amount=null;
+      st().cStep='payment'; App.ui.render();
+    }),
+    'c-back-order': () => { st().cStep='order'; App.ui.render(); },
+    'c-confirm-payment': () => withOrder(o => {
+      if(!App.auth.can('payment.settle')&&!App.auth.can('order.settlePrint')) return App.ui.toast('دسترسی تسویه ندارید.','err');
+      const p=stInit().cPay;
+      if(!p.methodPicked) return App.ui.toast('ابتدا روش پرداخت را انتخاب کنید.','err');
+      if((p.method==='credit'||(p.method==='dongi'&&p.dongiMethod==='credit'))&&!(p.customerId||o.customerId)) return creditCustomerPicker(o,p.method==='dongi');
       return settleAndPrint(o);
     }),
     'c-transfer': () => withOrder(o => {
@@ -331,7 +363,7 @@ App.inputs = App.inputs || {};
     // Club: welcome message once a customer code is attached later.
     App.ui.render();
   }
-  function clubPicker(o) {
+  function clubPicker(o, afterAttached) {
     const c=App.club.cfg();
     App.ui.form({title:'مشتری و باشگاه مشتریان',
       note:'<div class="tiny muted" style="margin-bottom:8px">ثبت شماره مشتری هنگام انتخاب میز: '+(App.club.requiresCustomer()?'<b class="warn">اجباری</b>':'اختیاری')+'. پس از ثبت، پیام خوشآمدگویی ارسال میشود.</div>',
@@ -346,20 +378,45 @@ App.inputs = App.inputs || {};
       onSubmit:v=>{
         const r=App.club.attachCustomer(o,v);
         if(!r.ok) return App.ui.toast(r.error,'err');
-        App.ui.toast('مشتری «'+App.club.fullName(r.customer)+'» ثبت شد. پیام خوشآمد ارسال شد ('+(r.welcome.channel||'')+').','ok');
-        refresh();
+        if(afterAttached) afterAttached(r.customer);
+        else { App.ui.toast('مشتری «'+App.club.fullName(r.customer)+'» ثبت شد. پیام خوشآمد ارسال شد ('+(r.welcome.channel||'')+').','ok'); refresh(); }
       }});
   }
-  function chooseSettleMethod(method) {
-    App.ui.close();
-    const p=stInit().cPay; p.method=method; p.methodPicked=true; p.amount=null;
+  function assignCreditCustomer(o, customer, split) {
+    if(!customer) return App.ui.toast('مشتری انتخاب نشد.','err');
+    const p=stInit().cPay, name=App.club.fullName(customer);
+    App.store.commit(()=>{
+      o.customerId=customer.id;
+      o.customer={name,phone:customer.phone||'',code:customer.code||''};
+      o.updatedAt=Date.now();
+    },'club.attach','تخصیص مشتری اعتباری «'+name+'» به فاکتور '+U.num(o.no));
+    p.customerId=customer.id;
+    if(split) { p.method='dongi'; p.dongiMethod='credit'; }
+    else p.method='credit';
+    p.methodPicked=true;
+    App.ui.toast('مشتری «'+name+'» به فاکتور تخصیص داده شد.','ok');
     refresh();
-    App.ui.toast('روش «'+methodName(method)+'» انتخاب شد؛ جزئیات پرداخت را بررسی و دوباره «ثبت و چاپ نهایی» را بزنید.','ok');
+  }
+  function creditCustomerPicker(o, split) {
+    if(!App.auth.can('payment.credit')) return App.ui.toast('دسترسی پرداخت اعتباری ندارید.','err');
+    const p=stInit().cPay, customers=App.pay.customers();
+    if(!customers.length) {
+      if(App.auth.can('club.manage')) return clubPicker(o,c=>assignCreditCustomer(o,c,split));
+      return App.ui.toast('مشتری ثبت‌شده‌ای برای پرداخت اعتباری وجود ندارد.','err');
+    }
+    App.ui.form({title:'تخصیص شخص به فاکتور اعتباری',
+      note:'<div class="tiny muted">با انتخاب مشتری، نام او به همین فاکتور وصل می‌شود و اعتبارش بررسی خواهد شد.</div>',
+      fields:[{name:'customerId',label:'مشتری',type:'select',value:o.customerId||p.customerId||customers[0].id,
+        options:customers.map(c=>({value:c.id,label:App.club.fullName(c)+' · اعتبار '+M(App.domain.creditAvailable(c))}))}],
+      submit:'تخصیص مشتری به فاکتور',
+      onSubmit:v=>assignCreditCustomer(o,customers.find(c=>c.id===v.customerId),split)});
   }
   async function settleAndPrint(o) {
-    const s=stInit(), v=App.club.validateOrder(o); if(!v.ok) return App.ui.toast(v.error,'err');
+    const s=stInit(), p=s.cPay, v=App.club.validateOrder(o); if(!v.ok) return App.ui.toast(v.error,'err');
+    if(!p.methodPicked) return App.ui.toast('ابتدا روش پرداخت را انتخاب کنید.','err');
+    if((p.method==='credit'||(p.method==='dongi'&&p.dongiMethod==='credit'))&&!(p.customerId||o.customerId)) return App.ui.toast('برای پرداخت اعتباری، ابتدا شخص را به فاکتور تخصیص دهید.','err');
     const inventory=App.domain.stockCheck(o);if(!inventory.ok)return App.ui.toast(inventory.error+' پرداخت انجام نشد و میز آزاد نخواهد شد.','err');
-    const t=App.model.totals(o), rem=Math.max(0,t.total-App.model.paid(o)), p=s.cPay;
+    const t=App.model.totals(o), rem=Math.max(0,t.total-App.model.paid(o));
     if (rem>0) {
       if (p.method==='dongi') {
         App.pay.setSplit(o,{mode:'equal',heads:Math.max(2,Number(p.heads)||2)});
@@ -417,11 +474,10 @@ App.inputs = App.inputs || {};
     'c-waiter': el => withOrder(o=>{ App.store.commit(()=>{o.personnelId=el.value;},'order.edit','تغییر سفارشگیر'); }),
     'c-amount': el => { stInit().cPay.amount=el.value; },
     'c-psp': el => { stInit().cPay.pspId=el.value; },
-    'c-credit': el => { stInit().cPay.customerId=el.value; },
+    'c-credit': el => withOrder(o=>assignCreditCustomer(o,App.model.customer(el.value),false)),
     'c-cash': el => { stInit().cPay.cashReceived=el.value; },
     'c-heads': el => { stInit().cPay.heads=Number(el.value)||2; },
-    'c-dongi': el => { stInit().cPay.dongiMethod=el.value; },
-    'c-takeaway': el => { stInit().cTakeaway=el.checked; }
+    'c-dongi': el => withOrder(o=>{const p=stInit().cPay;p.dongiMethod=el.value;if(el.value==='credit'){p.methodPicked=false;return creditCustomerPicker(o,true);}p.methodPicked=true;refresh();})
   });
   App.views.console = consoleView;
   // Shared by the invoice screen so settlement logic has a single implementation.

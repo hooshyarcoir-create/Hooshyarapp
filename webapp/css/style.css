@@ -465,3 +465,25 @@ table.tbl .num { direction: ltr; }
 .table-count-form .field { width:min(300px,100%); margin:0; }
 .table-count-form .btn { min-height:42px; }
 @media(max-width:640px) { .hall-management-grid { grid-template-columns:minmax(0,1fr); } .table-count-form { align-items:stretch; } .table-count-form .field,.table-count-form .btn { width:100%; } .hall-table-section .card-head { flex-wrap:wrap; } }
+
+/* Order controls are grouped at the top; settlement is a dedicated next step. */
+.order-command-bar { display:flex; align-items:center; gap:8px; margin-bottom:14px; padding:10px; }
+.order-command-bar .btn { flex:1; min-width:0; }
+.payment-page-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:start; direction:rtl; }
+.payment-page-grid > * { min-width:0; }
+.payment-page-methods { position:sticky; top:8px; }
+.payment-summary .order-meta { margin-bottom:4px; }
+.payment-summary-lines .t-row { padding:5px 0; color:var(--muted); border-bottom:1px solid var(--line-soft); }
+.credit-customer-summary { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--surface-2); }
+.payment-prompt { padding:12px; color:var(--muted); background:var(--surface-2); border-radius:9px; text-align:center; }
+@media(max-width:960px) {
+  .order-command-bar { overflow-x:auto; }
+  .order-command-bar .btn { flex:none; }
+  .payment-page-grid { grid-template-columns:minmax(0,1fr); }
+  .payment-page-methods { position:static; }
+}
+@media(max-width:640px) {
+  .order-command-bar { gap:5px; padding:7px; }
+  .order-command-bar .btn { flex:1; padding:7px; font-size:11px; }
+  .order-command-bar .btn svg.ic { width:14px; height:14px; }
+}
