@@ -131,12 +131,16 @@ App.inputs = App.inputs || {};
       '<span class="spacer"></span><span class="pill">'+I('grid','sm')+' '+N(occ)+' میز اشغال</span></div>';
     h+='<div class="card" style="margin-bottom:14px"><div class="table-grid compact">'+tables.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).map(tableCard).join('')+'</div></div>';
     h+='<div class="console-grid">';
-    // 1) products
-    h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
-      '<div class="input-icon" style="margin-bottom:10px">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
-      '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
-      groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
-      '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
+    // The menu stays hidden until a table (or takeaway order) is selected.
+    if (o) {
+      h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
+        '<div class="input-icon" style="margin-bottom:10px">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
+        '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
+        groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
+        '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
+    } else {
+      h+='<div class="card order-first-prompt">'+empty('ابتدا سالن و میز را انتخاب کنید؛ سپس گروهها و غذاها نمایش داده می‌شوند.','grid')+'</div>';
+    }
     // 2) order + payment
     h+='<div>'+orderPanel(o);
     if (o) h+='<div class="card" style="margin-top:12px">'+payDraft(o)+'</div>';
