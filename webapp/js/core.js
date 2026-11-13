@@ -197,6 +197,7 @@ App.store = (function () {
           footer:'با تشکر از حضور گرم شما 🌿', headerNote:'سفارش شما در حال آمادهسازی است',
           autoSave:true, printMeta:true, printVersion:true,
           stockPolicy:'on-submit', commissionPolicy:'product',
+          connection:{platform:'auto',mode:'offline',backend:'mysql',apiUrl:'',autoSync:true,conflictPolicy:'manual',lastSyncedAt:0},
           club:{ enabled:true, customerRequired:false, welcomeMessage:'سلام {name} عزیز، به رستوران هوشیار خوش آمدید 🌿',
                  invoiceMessage:'فاکتور شما آماده است: {link}', smsProvider:'android', linkBase:'', consent:true }
         },
@@ -339,6 +340,8 @@ App.store = (function () {
       Object.keys(def.settings).forEach(k => { if (d.settings[k] == null) d.settings[k] = def.settings[k]; });
       if (d.settings.club) Object.keys(def.settings.club).forEach(k => { if (d.settings.club[k] == null) d.settings.club[k] = def.settings.club[k]; });
       else d.settings.club = def.settings.club;
+      if (!d.settings.connection) d.settings.connection = App.util.clone(def.settings.connection);
+      else Object.keys(def.settings.connection).forEach(k => { if (d.settings.connection[k] == null) d.settings.connection[k] = def.settings.connection[k]; });
       Object.keys(def.meta).forEach(k => { if (d.meta[k] == null) d.meta[k] = def.meta[k]; });
 
       if (!d.roles || !d.roles.length) d.roles = App.util.clone(App.BUILTIN_ROLES);
@@ -428,6 +431,7 @@ App.store = (function () {
       S.data.meta.updatedAt = Date.now();
       if (action) App.audit(action, detail || '', extra);
       S.emit(); S.scheduleSave();
+      if (App.sync && App.sync.localChanged) App.sync.localChanged();
     },
     scheduleSave() {
       if (S.data && S.data.settings && S.data.settings.autoSave === false) return;
@@ -454,6 +458,7 @@ App.store = (function () {
       const parsed = JSON.parse(text);
       if (!parsed || !parsed.meta || !Array.isArray(parsed.users)) throw new Error('فایل پشتیبان معتبر نیست');
       S.data = S.ensureShape(parsed); S.saveNow(); S.emit();
+      if (App.sync && App.sync.localChanged) App.sync.localChanged();
     },
     clearDemo() {
       S.commit(d => {

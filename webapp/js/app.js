@@ -327,3 +327,5 @@ Object.assign(App.actions, {
 });
 
 App.ui.init();
+if(App.sync)App.sync.init();
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol))navigator.serviceWorker.register(new URL('sw.js',location.href)).catch(err=>console.warn('offline shell registration failed',err));

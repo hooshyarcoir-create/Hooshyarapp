@@ -22,3 +22,9 @@ android/app/src/main/assets/www/
 # Local backups / exports
 backups/
 *.log
+
+# Deployment secrets and desktop build output
+backend/php/config.php
+.env
+release/
+dist/

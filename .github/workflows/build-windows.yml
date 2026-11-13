@@ -1,0 +1,36 @@
+name: Build Windows desktop installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+    paths:
+      - 'electron/**'
+      - 'webapp/**'
+      - 'package.json'
+      - '.github/workflows/build-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Electron build tools
+        run: npm install --no-audit --no-fund
+      - name: Run application checks
+        run: npm test
+      - name: Build Windows installer
+        run: npm run desktop:win
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HooshyarPOS-Windows-x64
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 30

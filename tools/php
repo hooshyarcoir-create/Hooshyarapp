@@ -1,0 +1,5 @@
+#!/bin/sh
+# Portable PHP CLI for workspaces without a native PHP package manager.
+# Uses PHP.wasm; install native PHP/Docker PHP for production DB/server testing.
+export npm_config_loglevel=error
+exec npx --yes @php-wasm/cli@3.1.64 "$@"
