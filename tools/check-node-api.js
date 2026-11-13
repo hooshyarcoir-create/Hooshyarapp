@@ -21,10 +21,18 @@ async function main() {
   const base = `http://127.0.0.1:${server.address().port}`;
   const call = async (url, options = {}) => {
     const response = await fetch(base + url, options);
-    return { status: response.status, headers: response.headers, body: response.status === 204 ? null : await response.json() };
+    const contentType = response.headers.get('content-type') || '';
+    const body = response.status === 204 ? null : contentType.includes('application/json') ? await response.json() : await response.text();
+    return { status: response.status, headers: response.headers, body };
   };
   try {
-    let response = await call('/api/health');
+    let response = await call('/');
+    assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /text\/html/); assert.match(response.body, /سامانه هوشیار/);
+    response = await call('/js/app.js');
+    assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /javascript/);
+    response = await call('/missing-file.js');
+    assert.equal(response.status, 404);
+    response = await call('/api/health');
     assert.equal(response.status, 200); assert.equal(response.body.syncConfigured, true);
     response = await call('/api/sync', { method: 'OPTIONS' });
     assert.equal(response.status, 204); assert.equal(response.headers.get('access-control-allow-origin'), '*');
@@ -48,7 +56,7 @@ async function main() {
     assert.equal(response.status, 409); assert.equal(response.body.conflict, true); assert.equal(response.body.state.products[0].id, 'p1');
     response = await call('/api/sync?op=unknown', { headers: { Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 404);
-    console.log('Node sync API tests: 9 passed, 0 failed');
+    console.log('Node web and sync API smoke tests passed');
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }

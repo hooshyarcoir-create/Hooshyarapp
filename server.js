@@ -167,12 +167,7 @@ function createServer(options = {}) {
       return json(res, 403, { ok: false, error: 'دسترسی مجاز نیست' });
     }
     fs.stat(full, (error, stat) => {
-      if (error || !stat.isFile()) {
-        const fallback = path.join(ROOT, 'index.html');
-        return fs.readFile(fallback, (fallbackError, buffer) => fallbackError
-          ? json(res, 404, { ok: false, error: 'یافت نشد' })
-          : send(res, 200, req.method === 'HEAD' ? '' : buffer, MIME['.html']));
-      }
+      if (error || !stat.isFile()) return json(res, 404, { ok: false, error: 'یافت نشد' });
       const type = MIME[path.extname(full).toLowerCase()] || 'application/octet-stream';
       res.writeHead(200, {
         'Content-Type': type, 'Content-Length': stat.size,
