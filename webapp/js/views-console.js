@@ -21,6 +21,7 @@ App.inputs = App.inputs || {};
     if (s.cGroupId==null) s.cGroupId='all';
     if (s.cSearch==null) s.cSearch='';
     if (s.cTakeaway==null) s.cTakeaway=false;
+    if (!s.cStep) s.cStep='tables';
     return s;
   }
   function currentOrder() {
@@ -124,23 +125,28 @@ App.inputs = App.inputs || {};
     const products=d.products.filter(p=>(!gid||p.groupId===gid)&&(!q||p.name.indexOf(q)!==-1||(p.code||'').indexOf(q)!==-1));
     const occ=d.tables.filter(t=>t.status==='occupied').length;
 
-    let h=head('کنسول فروش یکپارچه','همه مراحل ثبت سفارش تا تسویه در یک صفحه',
-      B('c-new-takeaway','سفارش بیرونبر','plus','btn-outline btn-sm')+B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o?o.id:''})+
-      B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
-    h+='<div class="hall-bar"><div class="chips">'+halls.map(x=>'<button class="chip '+(x.id===s.cHallId?'active':'')+'" data-action="c-hall" data-id="'+x.id+'"><span class="dot" style="background:'+U.esc(x.color||'#f0a44b')+'"></span>'+U.esc(x.name)+' ('+N(d.tables.filter(t=>t.hallId===x.id).length)+')</button>').join('')+'</div>'+
-      '<span class="spacer"></span><span class="pill">'+I('grid','sm')+' '+N(occ)+' میز اشغال</span></div>';
-    h+='<div class="card" style="margin-bottom:14px"><div class="table-grid compact">'+tables.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).map(tableCard).join('')+'</div></div>';
-    h+='<div class="console-grid">';
-    // The menu stays hidden until a table (or takeaway order) is selected.
-    if (o) {
-      h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
-        '<div class="input-icon" style="margin-bottom:10px">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
-        '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
-        groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
-        '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
-    } else {
-      h+='<div class="card order-first-prompt">'+empty('ابتدا سالن و میز را انتخاب کنید؛ سپس گروهها و غذاها نمایش داده می‌شوند.','grid')+'</div>';
+    if (s.cStep!=='order' || !o) {
+      let selectView=head('انتخاب سالن و میز','ابتدا سالن را انتخاب کنید و سپس برای ورود به صفحه سفارش، روی میز بزنید.',
+        B('c-new-takeaway','سفارش بیرون‌بر','plus','btn-outline btn-sm')+
+        B('nav','فاکتورها','receipt','btn-sm',{screen:'invoices'}));
+      selectView+='<div class="hall-bar"><div class="chips">'+halls.map(x=>'<button class="chip '+(x.id===s.cHallId?'active':'')+'" data-action="c-hall" data-id="'+x.id+'"><span class="dot" style="background:'+U.esc(x.color||'#f0a44b')+'"></span>'+U.esc(x.name)+' ('+N(d.tables.filter(t=>t.hallId===x.id).length)+')</button>').join('')+'</div>'+
+        '<span class="spacer"></span><span class="pill">'+I('grid','sm')+' '+N(occ)+' میز اشغال</span></div>';
+      selectView+='<div class="card table-selection-page"><div class="table-grid compact">'+tables.sort((a,b)=>(a.y-b.y)||(a.x-b.x)).map(tableCard).join('')+'</div>'+(tables.length?'':empty('برای این سالن هنوز میزی تعریف نشده است.','grid'))+'</div>';
+      return selectView;
     }
+
+    const activeHall=App.model.hall(o.hallId);
+    let h=head('ثبت سفارش',U.esc(activeHall?activeHall.name+' · ':'')+U.esc(App.model.label(o))+' · فاکتور '+N(o.no),
+      B('c-back-tables','بازگشت به سالن و میزها','back','btn-outline btn-sm')+
+      B('c-transfer','جابهجایی میز','refresh','btn-sm',{id:o.id})+
+      B('nav','مدیریت فاکتورها','receipt','btn-sm',{screen:'invoices'}));
+    h+='<div class="console-grid">';
+    // This is the second step: the catalog is shown only after a table/order exists.
+    h+='<div class="card"><div class="card-head"><h3>گروهها و کالاها</h3><span class="spacer"></span><span class="tiny faint">'+N(products.length)+' کالا</span></div>'+
+      '<div class="input-icon" style="margin-bottom:10px">'+I('search')+'<input type="text" data-input="c-search" placeholder="جستجوی نام یا کد کالا…" value="'+U.esc(s.cSearch||'')+'"></div>'+
+      '<div class="chips" style="margin-bottom:10px"><button class="chip '+(gid?'':'active')+'" data-action="c-group" data-id="all">همه</button>'+
+      groups.map(g=>'<button class="chip '+(gid===g.id?'active':'')+'" data-action="c-group" data-id="'+g.id+'"><span class="dot" style="background:'+U.esc(g.color||'#888')+'"></span>'+U.esc(g.name)+'</button>').join('')+'</div>'+
+      '<div class="product-grid">'+products.map(productCard).join('')+'</div>'+(products.length?'':empty('کالایی یافت نشد.','book'))+'</div>';
     // 2) order + payment
     h+='<div>'+orderPanel(o);
     if (o) h+='<div class="card" style="margin-top:12px">'+payDraft(o)+'</div>';
@@ -171,13 +177,14 @@ App.inputs = App.inputs || {};
   function withOrder(fn) { const o=currentOrder(); if (!o) { App.ui.toast('ابتدا یک میز یا سفارش بیرونبر انتخاب کنید.','err'); return; } return fn(o); }
   function refresh() { App.ui.refresh(); }
   Object.assign(App.actions, {
-    'c-hall': el => { st().cHallId=el.dataset.id; st().cTableId=null; st().cOrderId=null; App.ui.render(); },
+    'c-hall': el => { st().cHallId=el.dataset.id; st().cTableId=null; st().cOrderId=null; st().cStep='tables'; App.ui.render(); },
+    'c-back-tables': () => { st().cStep='tables'; App.ui.render(); },
     'c-group': el => { st().cGroupId=el.dataset.id; App.ui.render(); },
     'c-table': el => withOrderTap(el.dataset.id),
     'c-new-takeaway': () => {
       if (!App.auth.can('order.create')) return App.ui.toast('دسترسی ثبت سفارش ندارید.','err');
       const o=App.model.createOrder(null,'بیرون بر');
-      st().cTableId=null; st().cOrderId=o.id; st().cTakeaway=true; App.ui.render();
+      st().cTableId=null; st().cOrderId=o.id; st().cTakeaway=true; st().cStep='order'; App.ui.render();
     },
     'c-add': el => withOrder(o => {
       if(!App.auth.can('order.edit')) return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');
@@ -309,7 +316,7 @@ App.inputs = App.inputs || {};
     'c-void': () => withOrder(o => {if(!App.auth.can('order.void'))return App.ui.toast('دسترسی لغو سفارش ندارید.','err');return App.ui.confirm('سفارش '+N(o.no)+' لغو شود؟ پیام ابطال به تمام چاپگرها ارسال میشود.',()=>{
       App.store.commit(d=>{ const t=d.tables.find(x=>x.id===o.tableId); if(t){t.status='free';t.orderId=null;t.occupiedAt=null;} o.status='void'; },'order.void','لغو سفارش '+N(o.no));
       App.domain.restoreStock(o); App.print.broadcast('ابطال سفارش',o,'سفارش لغو شد').catch(()=>{});
-      st().cOrderId=null; st().cTableId=null; App.ui.render();
+      st().cOrderId=null; st().cTableId=null; st().cStep='tables'; App.ui.render();
     }); }),
   });
   function withOrderTap(id) {
@@ -320,7 +327,7 @@ App.inputs = App.inputs || {};
       if(!App.auth.can('order.create')) return App.ui.toast('دسترسی ثبت سفارش ندارید.','err');
       o=App.model.createOrder(t.id,'حضوری');
     }
-    st().cTableId=t.id; st().cOrderId=o.id; st().cTakeaway=false;
+    st().cTableId=t.id; st().cOrderId=o.id; st().cTakeaway=false; st().cStep='order';
     // Club: welcome message once a customer code is attached later.
     App.ui.render();
   }
@@ -373,7 +380,7 @@ App.inputs = App.inputs || {};
     const pr=await App.print.printInvoice(inv,Number(D().settings.invoiceWidth)||80,{});
     if(!pr.ok) App.ui.toast('فاکتور تسویه شد ولی چاپ ناموفق بود: '+(pr.error||''),'err');
     const club=App.club.sendInvoice(inv);
-    s.cOrderId=null; s.cTableId=null; s.cPay.amount=null; s.cPay.methodPicked=false;
+    s.cOrderId=null; s.cTableId=null; s.cStep='tables'; s.cPay.amount=null; s.cPay.methodPicked=false;
     App.ui.render();
     App.ui.toast('فاکتور '+N(inv.no)+' تسویه و چاپ شد؛ میز آزاد گردید.' + (club.ok?' لینک فاکتور برای مشتری ارسال شد.':''),'ok');
     if(!club.ok&&club.error) App.ui.toast(club.error,'err');
