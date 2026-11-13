@@ -14,7 +14,7 @@ App.sync=(function(){
   const setBaseVersion=v=>storage().setItem(VERSION_KEY,String(Number(v)||0));
   const pending=()=>!!storage().getItem(PENDING_KEY);
   const conflict=()=>readJson(CONFLICT_KEY,null);
-  const apiUrl=()=>{let x=String(config().apiUrl||'').trim().replace(/\/+$/,'');if(!x)return '';return /\.php$/i.test(x)?x:x+'/api.php';};
+  const apiUrl=()=>{let x=String(config().apiUrl||'').trim().replace(/\/+$/,'');if(!x&&typeof location!=='undefined'&&/^https?:$/.test(location.protocol))x=new URL('/api.php',location.origin).href;if(!x)return '';return /\.php$/i.test(x)?x:x+'/api.php';};
   const token=()=>storage().getItem(TOKEN_KEY)||'';
   async function request(op,body){
     const endpoint=apiUrl();if(!endpoint)throw new Error('نشانی API در تنظیمات وارد نشده است.');

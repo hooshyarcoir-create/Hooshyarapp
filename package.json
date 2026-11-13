@@ -11,7 +11,8 @@
     "check": "node tools/check.js",
     "test": "node tools/check.js",
     "desktop": "electron electron/main.cjs",
-    "desktop:win": "electron-builder --win nsis --publish never"
+    "desktop:win": "electron-builder --win nsis --publish never",
+    "php:package": "bash tools/build-php-host.sh"
   },
   "engines": { "node": ">=18" },
   "license": "MIT",

@@ -18,11 +18,15 @@ function bearer(): string {
   return preg_match('/^Bearer\s+(.+)$/i', $header, $m) ? trim($m[1]) : '';
 }
 function body(): array { $raw = file_get_contents('php://input'); $value = json_decode($raw ?: '{}', true); if (!is_array($value)) reply(400, ['ok'=>false,'error'=>'JSON نامعتبر است']); return $value; }
-$configFile = __DIR__ . '/config.php';
-if (!is_file($configFile)) reply(503, ['ok'=>false,'error'=>'فایل config.php روی سرور ساخته نشده است.']);
+$configFile = (string)(getenv('HOOSHYAR_CONFIG') ?: '');
+$configCandidates = array_filter([$configFile, dirname(__DIR__) . '/private/config.php', __DIR__ . '/config.php']);
+$configFile = '';
+foreach ($configCandidates as $candidate) { if (is_file($candidate) && is_readable($candidate)) { $configFile = $candidate; break; } }
+if ($configFile === '') reply(503, ['ok'=>false,'error'=>'تنظیمات سرور PHP نصب نشده است.']);
 $config = require $configFile;
 $expectedToken = (string)($config['api_token'] ?? '');
-if (strlen($expectedToken) < 32 || !hash_equals($expectedToken, bearer())) reply(401, ['ok'=>false,'error'=>'توکن API نامعتبر است.']);
+if (strlen($expectedToken) < 32) reply(503, ['ok'=>false,'error'=>'توکن API در تنظیمات سرور تعریف نشده است.']);
+if (!hash_equals($expectedToken, bearer())) reply(401, ['ok'=>false,'error'=>'توکن API نامعتبر است.']);
 $driver = strtolower((string)($config['driver'] ?? 'mysql'));
 try {
   if ($driver === 'mysql') {

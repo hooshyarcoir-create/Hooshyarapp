@@ -1,44 +1,55 @@
-# Hooshyar POS shared-state API
+# نسخهٔ کامل PHP هوشیار
 
-This PHP API is the shared synchronization endpoint for the Windows Electron and Android apps. The client UI is packaged on-device; this server is only the common API/database service. The POS remains usable from its local store if the API or internet is unavailable. Clients upload whole versioned snapshots with a durable operation ID; the API records acknowledgments transactionally, so retrying after a lost response is idempotent. It uses optimistic revision checks and returns a conflict instead of silently overwriting a newer server version.
+این بسته یک ورودی PHP برای فرانت‌اند (`public/index.php`) و API بک‌اند (`public/api.php`) دارد. PHP پوستهٔ POS را ارائه می‌کند؛ رابط تعاملی اصلی از کد مشترک `webapp/` استفاده می‌کند تا دقیقاً همان قابلیت‌های آفلاین در مرورگر، Android WebView و Windows Electron حفظ شوند. این بسته فقط سایت نیست: APK و برنامهٔ ویندوز نیز همان API و دیتابیس مشترک را مصرف می‌کنند.
 
-## Database support
+## ساخت فایل‌های آمادهٔ آپلود
 
-- MySQL/MariaDB through PDO (`pdo_mysql`).
-- SQL Server 2014+ through Microsoft PDO_SQLSRV (`pdo_sqlsrv`). The PHP host must have the matching Microsoft ODBC driver installed.
-- The API creates a single `hooshyar_sync_state` row/table on first request. This is a versioned JSON snapshot store, not yet a normalized reporting schema.
+از ریشهٔ مخزن اجرا کنید:
 
-## PHP CLI in the repository sandbox
+```sh
+npm run php:package
+```
 
-Run `php -v`, `php -l backend/php/api.php`, or `./tools/php -v`. The repository helper downloads/runs the PHP 8.5.12 WebAssembly CLI via npm; it supplies a real PHP CLI/linter here without installing a system package. It is not a native PHP-FPM/Apache deployment and does not replace testing against a live DB. On a normal host with PHP installed, use the system `php` command instead.
+خروجی آمادهٔ میزبانی در `release/hooshyar-php-host.zip` ایجاد می‌شود. ساختار خروجی شامل `public/` برای Document Root و `private/` برای تنظیمات/کد PHP است. در هاست، `public/` را به‌عنوان Document Root تنظیم کنید و `private/` را بیرون از public نگه دارید.
 
-## Run PHP API locally
+پیش از آپلود، `private/config.php` را ویرایش و مقادیر دیتابیس و `api_token` را تنظیم کنید. توکن باید حداقل ۳۲ نویسهٔ تصادفی باشد. نمونهٔ امن تولید توکن:
 
-To verify PHP and the API route, run `php -S 0.0.0.0:8088 -t backend/php` from the repository root, then request `http://localhost:8088/api.php?op=status`. Without a server `config.php`, the expected response is HTTP 503 with a setup message. This server alone does not enable synchronization until a supported database and token are configured.
+```sh
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+```
 
-## Run the shared API and MySQL in Docker
+نیازمندی سرور: PHP 8.2 یا جدیدتر، PDO و یکی از درایورهای `pdo_mysql` یا `pdo_sqlsrv`. برای SQL Server، درایور Microsoft ODBC سازگار با سیستم‌عامل و PHP نیز لازم است. درایور دیتابیس و رمز فقط روی سرور PHP تنظیم می‌شوند؛ آن‌ها را داخل APK یا برنامهٔ Windows قرار ندهید.
 
-The repository includes PHP 8.3 + Apache + MySQL 8.4. The PHP container exposes the API only; Windows and Android continue running the UI locally:
+## MySQL/MariaDB و SQL Server
 
-1. From the repository root, copy `.env.example` to `.env` and replace the example passwords/tokens with unique random values. For example, generate values using `openssl rand -hex 32`.
-2. Run `docker compose up --build -d`.
-3. On each Android/Electron app, set API URL to `http://<server-LAN-address>:8080/api.php` for local testing (use a real HTTPS domain in production), and enter the same `HOOSHYAR_API_TOKEN`. Do not enter `localhost` on a phone; it means the phone itself.
-4. Select the same backend and **offline + sync** mode on devices that share data; press **Test connection**, then **Sync now**. For a fully separate Android installation, choose **standalone offline** instead. The API token and endpoint stay local on each device.
-5. Verify the MySQL volume persists after restarting containers. Stop with `docker compose down`; `docker compose down -v` permanently deletes the local test database.
+- MySQL/MariaDB از PDO MySQL استفاده می‌کند.
+- SQL Server 2014+ از PDO_SQLSRV استفاده می‌کند.
+- با اولین درخواست، API جدول snapshot نسخه‌بندی‌شده و جدول idempotency را ایجاد می‌کند؛ حساب دیتابیس باید اجازهٔ ساخت/به‌روزرسانی این جدول‌ها را داشته باشد.
+- این نسخه یک snapshot کامل از دادهٔ POS را نگه می‌دارد؛ تعارض‌ها به‌صورت دستی حل می‌شوند و ادغام رکوردبه‌رکورد ندارد.
 
-The compose stack is for local development only; do not expose its plain HTTP port to the public internet. Deploy behind HTTPS for real use.
+## اتصال Android و Windows به سرور
 
-## Install manually / production
+در همهٔ دستگاه‌هایی که باید داده مشترک داشته باشند:
 
-1. Serve this directory through PHP 7.4+ and HTTPS. Set `api.php` as the endpoint in the app.
-2. Copy `config.example.php` to `config.php` on the server (the real file is git-ignored), or provide the documented `HOOSHYAR_*` environment variables.
-3. Set `HOOSHYAR_DB_DRIVER` to `mysql` or `sqlsrv`; fill host, database, user and password only on the PHP server.
-4. Generate a random API token of at least 32 characters and set `HOOSHYAR_API_TOKEN`.
-5. Create an empty database and grant the configured account permission to create/update the state table.
-6. In each client, open **Settings → Versions & connection**, choose the same DB driver, enter the HTTPS URL ending in `/api.php`, enter the server-issued token, select **online and offline**, save, test, then synchronize.
+1. در **تنظیمات سامانه ← نسخه‌ها و اتصال**، backend یکسان (MySQL یا SQL Server) را انتخاب کنید.
+2. حالت **آفلاین + همگام‌سازی** را انتخاب کنید. تغییرها ابتدا محلی ذخیره و هنگام اتصال شبکه ارسال می‌شوند؛ همگام‌سازی خودکار پیش‌فرض روشن است.
+3. نشانی `https://your-host/api.php` و توکن `api_token` را در هر نصب وارد کنید. روی خود سایت PHP، نشانی API می‌تواند خالی باشد تا همان دامنه استفاده شود. در گوشی، `localhost` به خود گوشی اشاره می‌کند؛ نشانی سرور را وارد کنید.
+4. دکمهٔ **آزمایش اتصال** و سپس **همگام‌سازی اکنون** را بزنید.
 
-Database passwords must never be entered in a browser, Android app, or Windows client. Client tokens are stored locally on that device and excluded from backups and synced snapshots. API URL, platform, backend choice, and offline/auto-sync mode are also device-local and are not replicated to other clients; configure each device independently. For a public deployment, restrict network access to the API and rotate/revoke tokens if a device is lost. Do not expose this initial shared-token API to an untrusted public network; per-user server authentication and a normalized transactional API are follow-up production hardening.
+برای دستگاه کاملاً مستقل، حالت **کاملاً مستقل و آفلاین** را انتخاب کنید؛ هیچ تغییری به سرور یا دستگاه دیگری ارسال نمی‌شود. اپ Android داده‌ها را در حافظهٔ محلی WebView و فایل پشتیبان خصوصی Android نگه می‌دارد. Electron نیز دادهٔ محلی خود را حفظ می‌کند.
 
-## Conflict behavior
+## اجرای PHP و MySQL با Docker
 
-When two devices edit from the same base revision, the first upload advances the server revision. The other device receives a conflict; it must explicitly keep the server snapshot or overwrite the server with its local snapshot. Both choices require confirmation in the UI. This first version does not merge individual records; export a backup before resolving a large conflict.
+در ریشهٔ مخزن `.env.example` را به `.env` کپی کنید و رمزها/توکن تصادفی خود را جایگزین کنید، سپس اجرا کنید:
+
+```sh
+docker compose up --build -d
+```
+
+این پیکربندی PHP 8.3/Apache و MySQL 8.4 را بالا می‌آورد و سایت PHP و API را از یک دامنه ارائه می‌کند. برای نصب‌های Android/Windows، از نشانی LAN سرور یا دامنهٔ HTTPS استفاده کنید. توقف با `docker compose down`؛ حذف دادهٔ دیتابیس با `docker compose down -v`.
+
+## سازگاری با هاست Node.js
+
+هاست Node.js به‌تنهایی فایل‌های PHP را اجرا نمی‌کند. چون هاست شما PHP و MySQL هم دارد، فایل ZIP PHP را روی همان PHP runtime نصب کنید. اگر دامنهٔ Node باید نقطهٔ ورود باقی بماند، آن را به‌عنوان reverse proxy به دامنهٔ PHP تنظیم کنید؛ PHP باید واقعاً روی هاست/سرویس PHP اجرا شود.
+
+برای اینترنت عمومی، HTTPS الزامی است. این نسخه از توکن مشترک سرور استفاده می‌کند؛ دسترسی به API را محدود کنید و در صورت مفقودشدن دستگاه، توکن را عوض کنید. اعتبارسنجی اختصاصی کاربر در سرور و ادغام رکوردی، گام‌های بعدی سخت‌سازی/گسترش هستند.
