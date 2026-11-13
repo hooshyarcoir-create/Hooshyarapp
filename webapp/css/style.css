@@ -143,6 +143,17 @@ svg.ic.lg { width: 24px; height: 24px; }
 .ltr { direction: ltr; text-align: left; }
 .center { text-align: center; }
 .nowrap { white-space: nowrap; }
+.mini-cart-fab { position: fixed; left: 18px; bottom: 22px; z-index: 210; display: flex; align-items: center; gap: 8px; min-height: 50px; max-width: calc(100vw - 36px); padding: 9px 15px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: linear-gradient(135deg,#f6bd6a,#dd7d29); color: #20170d; box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 3px 14px rgba(221,125,41,.28); font-weight: 700; }
+.mini-cart-fab:active { transform: translateY(1px) scale(.98); }
+.mini-cart-fab > svg { width: 20px; height: 20px; }
+.mini-cart-fab > span:not(.mini-cart-count) { white-space: nowrap; }
+.mini-cart-count { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: #20170d; color: #ffd394; font-size: 12px; }
+.mini-cart-total { border-right: 1px solid rgba(32,23,13,.24); padding-right: 8px; white-space: nowrap; }
+.mini-cart-list { display: flex; flex-direction: column; gap: 8px; }
+.mini-cart-row, .mini-cart-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
+.mini-cart-row + .mini-cart-row { border-top: 1px solid var(--line-soft); }
+.mini-cart-row > span { min-width: 0; }
+.mini-cart-summary { font-size: 14px; }
 .strong { font-weight: 700; }
 .accent { color: var(--accent); }
 .ok { color: var(--ok); }
@@ -352,6 +363,10 @@ table.tbl .num { direction: ltr; }
   .order-layout { grid-template-columns: minmax(0,1fr); }
   .cart { position: static; }
   .cart-lines { max-height: none; }
+  .mini-cart-fab { left: 12px; bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .modal-root { padding: 10px; }
+  .modal { max-height: calc(100dvh - 20px); }
+  .mini-cart-row { font-size: 13px; }
   .settings-layout { grid-template-columns: minmax(0,1fr); }
   .settings-nav { flex-direction: row; overflow-x: auto; }
   .settings-nav button { white-space: nowrap; }

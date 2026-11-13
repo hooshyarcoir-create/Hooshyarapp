@@ -212,7 +212,21 @@ App.inputs = App.inputs || {};
         (App.auth.can('order.print')?B('c-preview','پیش‌نمایش فاکتور','receipt','btn-sm'):'')+
         (App.auth.can('order.void')?B('c-void','لغو سفارش','trash','btn-sm btn-danger'):'')+
       '</div></div>';
+    h+=miniCartButton(o);
     return h;
+  }
+  function miniCartButton(o) {
+    const lines=(o.lines||[]).filter(l=>!l.voided),count=U.sum(lines,l=>Number(l.qty)||0);
+    if(!count)return '';
+    return '<button class="mini-cart-fab" data-action="c-open-mini-cart" aria-label="نمایش سبد خرید">'+I('receipt')+'<span>سبد خرید</span><span class="mini-cart-count">'+N(count)+'</span><b class="mini-cart-total num">'+M(App.model.totals(o).total)+'</b></button>';
+  }
+  function showMiniCart(o) {
+    const lines=(o.lines||[]).filter(l=>!l.voided),settings=D().settings;
+    const body=lines.length?'<div class="mini-cart-list">'+lines.map(l=>{const amount=App.domain.lineCalc(l,settings).net;return '<div class="mini-cart-row"><span>'+U.esc(l.name)+' × '+N(l.qty)+'</span><b class="num">'+M(amount)+'</b></div>';}).join('')+'</div>':'<div class="empty-state">سبد خرید خالی است.</div>';
+    App.ui.modal({title:'سبد خرید · فاکتور '+N(o.no),body:body+'<div class="divider"></div><div class="mini-cart-summary"><span>مبلغ قابل پرداخت</span><b class="num">'+M(App.model.totals(o).total)+' '+U.esc(settings.currency)+'</b></div>',size:'wide',buttons:[
+      {label:'نمایش اقلام در سفارش',icon:'receipt',cls:'btn-primary',onClick:()=>{App.ui.close();setTimeout(()=>{const el=document.querySelector('.cart-lines');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);}},
+      {label:'بستن',close:true}
+    ]});
   }
 
   /* ------------------------------- actions ------------------------------- */
@@ -241,8 +255,9 @@ App.inputs = App.inputs || {};
       if(!App.auth.can('order.edit')) return App.ui.toast('دسترسی ویرایش سفارش ندارید.','err');
       const p=App.model.product(el.dataset.id);
       if (!App.domain.productAvailable(p)) return App.ui.toast('این کالا ناموجود است و بهصورت خودکار قفل شده است.','err');
-      App.model.addLine(o,el.dataset.id); refresh();
+      const line=App.model.addLine(o,el.dataset.id);if(line)App.ui.toast('آیتم به سبد اضافه شد','ok');refresh();
     }),
+    'c-open-mini-cart': () => withOrder(o=>showMiniCart(o)),
     'c-qty': el => withOrder(o => {
       if(!App.auth.can('order.edit')) return App.ui.toast('دسترسی ویرایش اقلام سفارش ندارید.','err');
       const l=o.lines.find(x=>x.id===el.dataset.line); if(!l) return;
