@@ -26,8 +26,22 @@ jobs:
       - name: Run application checks
         run: npm test
       - name: Build Windows installer
-        run: npm run desktop:win
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'electron-builder.log'
+          npm run desktop:win 2>&1 | Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish build log on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'electron-builder.log'
+          if (Test-Path $log) {
+            Add-Content $env:GITHUB_STEP_SUMMARY '### Electron Builder output (last 100 lines)'
+            Get-Content $log -Tail 100 | Add-Content $env:GITHUB_STEP_SUMMARY
+          }
       - name: Upload installer artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: HooshyarPOS-Windows-x64
